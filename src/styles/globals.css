@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand: #0A8A7A;
+    --navy: #0D1B3E;
+    --gold: #F0A500;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    @apply bg-slate-50 text-navy-800 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  input, select, textarea {
+    @apply outline-none;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+}
+
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-card;
+  }
+  .card-md {
+    @apply bg-white rounded-xl border border-slate-200 shadow-card-md;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+           transition-all duration-150 cursor-pointer select-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-800 active:scale-95;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-navy-600 border border-slate-200 hover:bg-slate-50 active:scale-95;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 active:scale-95;
+  }
+  .btn-danger {
+    @apply btn bg-red-50 text-red-700 border border-red-200 hover:bg-red-100;
+  }
+
+  /* Form inputs */
+  .input {
+    @apply w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm
+           text-navy-800 placeholder-slate-400
+           focus:border-brand-600 focus:ring-2 focus:ring-brand-600/10
+           transition-all duration-150;
+  }
+  .label {
+    @apply block text-xs font-medium text-slate-500 mb-1.5;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green  { @apply badge bg-brand-50 text-brand-800; }
+  .badge-amber  { @apply badge bg-amber-50 text-amber-800; }
+  .badge-red    { @apply badge bg-red-50 text-red-700; }
+  .badge-blue   { @apply badge bg-blue-50 text-blue-800; }
+  .badge-gray   { @apply badge bg-slate-100 text-slate-600; }
+  .badge-navy   { @apply badge bg-navy-600 text-white; }
+
+  /* Semáforo dots */
+  .dot-green  { @apply w-2.5 h-2.5 rounded-full bg-brand-400 flex-shrink-0; }
+  .dot-amber  { @apply w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0; }
+  .dot-red    { @apply w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0; }
+  .dot-gray   { @apply w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0; }
+
+  /* Section titles */
+  .section-title {
+    @apply text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3;
+  }
+}

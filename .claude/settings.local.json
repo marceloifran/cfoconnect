@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --input-type=module --eval \"import\\('./src/pages/DiagnosticoPage.jsx'\\)\")",
+      "Bash(npx vite *)"
+    ]
+  }
+}
