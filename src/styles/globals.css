@@ -1,12 +1,45 @@
+@import './nexxo-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Legacy (mantener para compatibilidad con componentes existentes) */
     --brand: #0A8A7A;
-    --navy: #0D1B3E;
-    --gold: #F0A500;
+    --navy:  #0D1B3E;
+    --gold:  #F0A500;
+
+    /* ── NEXXO CAPITAL — Sistema de tokens v2 ── */
+    --nx-black:     #111417;
+    --nx-gray:      #6B6B6B;
+    --nx-topo:      #A8A093;
+    --nx-topo-lt:   #C4B9AD;
+    --nx-topo-xl:   #E0DAD2;
+    --nx-light:     #EDEDED;
+    --nx-off:       #F5F4F1;
+    --nx-off2:      #EFEDE9;
+    --nx-white:     #FFFFFF;
+    --nx-line:      rgba(17,20,23,0.08);
+    --nx-shadow:    0 2px 12px rgba(17,20,23,0.07);
+    --nx-shadow-md: 0 6px 24px rgba(17,20,23,0.10);
+    /* Semánticos */
+    --nx-green:      #16A34A;
+    --nx-green-bg:   #F0FDF4;
+    --nx-green-bd:   #BBF7D0;
+    --nx-amber:      #D97706;
+    --nx-amber-bg:   #FFFBEB;
+    --nx-amber-bd:   #FDE68A;
+    --nx-red:        #DC2626;
+    --nx-red-bg:     #FEF2F2;
+    --nx-red-bd:     #FECACA;
+    --nx-indigo:     #4F46E5;
+    --nx-indigo-bg:  #EEF2FF;
+    --nx-indigo-bd:  #C7D2FE;
+    --nx-sky:        #0284C7;
+    --nx-sky-bg:     #F0F9FF;
+    --nx-sky-bd:     #BAE6FD;
   }
 
   * { box-sizing: border-box; }
@@ -36,20 +69,91 @@
 
   /* Buttons */
   .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-           transition-all duration-150 cursor-pointer select-none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    user-select: none;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-800 active:scale-95;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    background-color: #111417;
+    color: #FFFFFF;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 2px;
+  }
+  .btn-primary:hover {
+    background-color: #A8A093;
   }
   .btn-secondary {
-    @apply btn bg-white text-navy-600 border border-slate-200 hover:bg-slate-50 active:scale-95;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    border: 1px solid #111417;
+    color: #111417;
+    background-color: transparent;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 2px;
+  }
+  .btn-secondary:hover {
+    background-color: #F5F4F1;
   }
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100 active:scale-95;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    color: #6B6B6B;
+    background-color: transparent;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 2px;
+  }
+  .btn-ghost:hover {
+    background-color: #EDEDED;
+    color: #111417;
   }
   .btn-danger {
-    @apply btn bg-red-50 text-red-700 border border-red-200 hover:bg-red-100;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    background-color: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FECACA;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+  }
+  .btn-danger:hover {
+    background-color: #FEE2E2;
   }
 
   /* Form inputs */
@@ -74,11 +178,11 @@
   .badge-gray   { @apply badge bg-slate-100 text-slate-600; }
   .badge-navy   { @apply badge bg-navy-600 text-white; }
 
-  /* Semáforo dots */
-  .dot-green  { @apply w-2.5 h-2.5 rounded-full bg-brand-400 flex-shrink-0; }
-  .dot-amber  { @apply w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0; }
-  .dot-red    { @apply w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0; }
-  .dot-gray   { @apply w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0; }
+  /* Semáforo dots — colores Nexxo */
+  .dot-green  { @apply w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#16A34A]; }
+  .dot-amber  { @apply w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#D97706]; }
+  .dot-red    { @apply w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#DC2626]; }
+  .dot-gray   { @apply w-2.5 h-2.5 rounded-full flex-shrink-0 bg-[#E0DAD2]; }
 
   /* Section titles */
   .section-title {

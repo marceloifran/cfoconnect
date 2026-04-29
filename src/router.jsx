@@ -4,9 +4,24 @@ import AppShell from '@/components/layout/AppShell'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import DiagnosticoPage from '@/pages/DiagnosticoPage'
+import DiagnosticoResultados from '@/pages/DiagnosticoResultados'
+import BalancePage from '@/pages/BalancePage'
+import CFOPage from '@/pages/CFOPage'
+import DiagnosticoProfundoPage from '@/pages/DiagnosticoProfundoPage'
+import InformeFinalPage from '@/pages/InformeFinalPage'
+import InformeNexxoPage from '@/pages/InformeNexxoPage'
 import AsesorPage from '@/pages/AsesorPage'
+import AdminPage from '@/pages/AdminPage'
+import AdminAsesoresPage from '@/pages/AdminAsesoresPage'
+import AdminEmpresasPage from '@/pages/AdminEmpresasPage'
+import AdminAsignacionesPage from '@/pages/AdminAsignacionesPage'
+import AdminMercadoPage from '@/pages/AdminMercadoPage'
+import DocumentosPage from '@/pages/DocumentosPage'
+import MensajesPage from '@/pages/MensajesPage'
+import MiInformePage from '@/pages/MiInformePage'
+import MiRutaPage from '@/pages/MiRutaPage'
 
-// ── Placeholder pages (se reemplazan en fases siguientes) ──────────────────
+// ── Placeholder ───────────────────────────────────────────────────────────────
 function ComingSoon({ title }) {
   return (
     <div className="flex-1 flex flex-col">
@@ -26,7 +41,7 @@ function ComingSoon({ title }) {
   )
 }
 
-// ── Route guards ───────────────────────────────────────────────────────────
+// ── Guards ────────────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
   const { session, loading } = useAuth()
   if (loading) return <LoadingScreen />
@@ -42,11 +57,13 @@ function RequireRole({ role, children }) {
 }
 
 function RoleRouter() {
-  const { isAsesor, loading } = useAuth()
+  const { session, profile, loading } = useAuth()
+  console.log('[RoleRouter] loading:', loading, 'session:', !!session, 'rol:', profile?.rol)
   if (loading) return <LoadingScreen />
-  return isAsesor
-    ? <Navigate to="/asesor" replace />
-    : <Navigate to="/dashboard" replace />
+  if (!session) return <Navigate to="/login" replace />
+  if (profile?.rol === 'admin')  return <Navigate to="/admin"   replace />
+  if (profile?.rol === 'asesor') return <Navigate to="/asesor"  replace />
+  return <Navigate to="/dashboard" replace />
 }
 
 function LoadingScreen() {
@@ -57,7 +74,7 @@ function LoadingScreen() {
   )
 }
 
-// ── App routes ─────────────────────────────────────────────────────────────
+// ── Rutas ─────────────────────────────────────────────────────────────────────
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -65,46 +82,45 @@ export default function AppRouter() {
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected */}
+        {/* Protected — todas dentro del AppShell */}
         <Route element={<RequireAuth><AppShell /></RequireAuth>}>
-          {/* Root redirect by role */}
+
+          {/* Root — redirige según rol */}
           <Route index element={<RoleRouter />} />
 
-          {/* Client routes */}
-          <Route path="dashboard"   element={<DashboardPage />} />
-          <Route path="diagnostico" element={<DiagnosticoPage />} />
-          <Route path="cfo"         element={<ComingSoon title="CFO — Gestión mensual" />} />
-          <Route path="mercado"     element={<ComingSoon title="Mercado de capitales" />} />
-          <Route path="reportes"    element={<ComingSoon title="Reportes" />} />
+          {/* ── Admin ─────────────────────────────────────────── */}
+          <Route path="admin" element={<RequireRole role="admin"><AdminPage /></RequireRole>} />
+          <Route path="admin/asesores"     element={<RequireRole role="admin"><AdminAsesoresPage /></RequireRole>} />
+          <Route path="admin/empresas"     element={<RequireRole role="admin"><AdminEmpresasPage /></RequireRole>} />
+          <Route path="admin/asignaciones" element={<RequireRole role="admin"><AdminAsignacionesPage /></RequireRole>} />
+          <Route path="admin/mercado"      element={<RequireRole role="admin"><AdminMercadoPage /></RequireRole>} />
 
-          {/* Advisor routes */}
-          <Route
-            path="asesor"
-            element={
-              <RequireRole role="asesor">
-                <AsesorPage />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="asesor/empresas"
-            element={
-              <RequireRole role="asesor">
-                <ComingSoon title="Gestión de empresas" />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="asesor/alertas"
-            element={
-              <RequireRole role="asesor">
-                <ComingSoon title="Alertas globales" />
-              </RequireRole>
-            }
-          />
+          {/* ── Cliente ──────────────────────────────────────── */}
+          <Route path="dashboard"      element={<DashboardPage />} />
+          <Route path="mi-perfil"      element={<DiagnosticoPage />} />
+          <Route path="mi-informe"     element={<MiInformePage />} />
+          <Route path="mi-ruta"        element={<MiRutaPage />} />
+          <Route path="documentos"     element={<DocumentosPage />} />
+          <Route path="mensajes"       element={<MensajesPage />} />
+          {/* Redirigir rutas viejas del cliente */}
+          <Route path="diagnostico"              element={<Navigate to="/mi-perfil" replace />} />
+          <Route path="diagnostico/resultados"   element={<Navigate to="/mi-perfil" replace />} />
+          <Route path="mercado"                  element={<Navigate to="/mi-ruta"   replace />} />
+          <Route path="reportes"                 element={<Navigate to="/mi-informe" replace />} />
+          {/* CFO solo para asesor/admin */}
+          <Route path="cfo" element={<RequireRole role="asesor"><CFOPage /></RequireRole>} />
+
+          {/* ── Asesor ────────────────────────────────────────── */}
+          <Route path="asesor"          element={<RequireRole role="asesor"><AsesorPage /></RequireRole>} />
+          <Route path="asesor/empresas" element={<RequireRole role="asesor"><ComingSoon title="Gestión de empresas" /></RequireRole>} />
+          <Route path="asesor/alertas"  element={<RequireRole role="asesor"><ComingSoon title="Alertas globales" /></RequireRole>} />
+          <Route path="balance"         element={<RequireRole role="asesor"><BalancePage /></RequireRole>} />
+          <Route path="diagnostico-profundo" element={<RequireRole role="asesor"><DiagnosticoProfundoPage /></RequireRole>} />
+          <Route path="informe-final"   element={<RequireRole role="asesor"><InformeFinalPage /></RequireRole>} />
+          <Route path="informe-nexxo"   element={<RequireRole role="asesor"><InformeNexxoPage /></RequireRole>} />
+
         </Route>
 
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

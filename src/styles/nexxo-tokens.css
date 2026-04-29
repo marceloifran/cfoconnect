@@ -1,0 +1,27 @@
+:root {
+  /* Colores principales */
+  --nx-black:    #111417;
+  --nx-gray:     #6B6B6B;
+  --nx-topo:     #A8A093;
+  --nx-topo-lt:  #C4B9AD;
+  --nx-topo-xl:  #E0DAD2;
+  --nx-light:    #EDEDED;
+  --nx-off:      #F5F4F1;
+  --nx-white:    #FFFFFF;
+  --nx-line:     rgba(17,20,23,0.1);
+
+  /* Tipografía */
+  --nx-font-sans:   'Montserrat', sans-serif;
+  --nx-font-serif:  'Cormorant Garamond', serif;
+  --nx-font-mono:   'DM Mono', monospace;
+
+  /* Sombras */
+  --nx-shadow-sm: 0 2px 8px rgba(17,20,23,0.07);
+  --nx-shadow-md: 0 8px 24px rgba(17,20,23,0.10);
+  --nx-shadow-lg: 0 20px 48px rgba(17,20,23,0.14);
+
+  /* Radio */
+  --nx-radius-sm: 4px;
+  --nx-radius-md: 8px;
+  --nx-radius-lg: 12px;
+}

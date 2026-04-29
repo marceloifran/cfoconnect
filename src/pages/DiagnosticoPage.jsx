@@ -1,115 +1,49 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+// SETUP: Crear bucket en Supabase Storage → Storage → New bucket
+// nombre: "balances-cliente" → Public: false
+// SQL a ejecutar antes de usar este módulo:
+// ALTER TABLE empresas ADD COLUMN IF NOT EXISTS etapa_diagnostico integer DEFAULT 1;
+// ALTER TABLE empresas ADD COLUMN IF NOT EXISTS balance_subido_por_cliente boolean DEFAULT false;
+// ALTER TABLE empresas ADD COLUMN IF NOT EXISTS encuesta_completada boolean DEFAULT false;
+// ALTER TABLE empresas ADD COLUMN IF NOT EXISTS informe_publicado boolean DEFAULT false;
+// ALTER TABLE empresas ADD COLUMN IF NOT EXISTS informe_publicado_at timestamptz;
+
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import PageHeader from '@/components/shared/PageHeader'
-import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react'
+import { CheckCircle, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 
-// ── Configuración de pasos ─────────────────────────────────────────
-const STEPS = [
-  { n: 1, label: 'Tu negocio' },
-  { n: 2, label: 'Ventas y costos' },
-  { n: 3, label: 'Plata y deudas' },
-  { n: 4, label: 'Tus bienes' },
-]
+// Usa supabaseAdmin (service key) para bypass RLS en storage.
+// Fallback al cliente anon si no está configurado.
+const storageClient = supabaseAdmin || supabase
 
-const EMPTY_DATA = {
-  // Paso 1
-  lineas_negocio: '',
-  estacionalidad: '',
-  concentracion_top3: '',
-  factura_usd: false,
-  exporta: false,
-  dolor_principal: '',
-  decision_pendiente: '',
-  objetivo_12meses: '',
-  // Paso 2
-  ventas_netas: '',
-  costo_ventas: '',
-  gastos_personal: '',
-  gastos_admin: '',
-  principal_costo: '',
-  pct_costos_fijos: '',
-  // Paso 3
-  caja: '',
-  deudores: '',
-  stock: '',
-  deuda_total: '',
-  pasivo_corriente: '',
-  dias_cobro: '',
-  dias_pago: '',
-  // Paso 4
-  inmueble_propio: false,
-  valor_inmueble: '',
-  echeqs_disponibles: false,
-  valor_echeqs: '',
-  patrimonio_neto: '',
+// ── Opciones de las preguntas ────────────────────────────────────────
+const FINANCIAMIENTO_OPS = ['Con lo que cobro', 'Con crédito bancario', 'Con tarjeta', 'Con ahorros propios', 'Me cuesta llegar']
+const CERTEZA_OPS        = ['Sí, tengo certeza', 'Más o menos', 'No tengo idea']
+const MERCADO_OPS        = ['Nunca escuché', 'Escuché pero no entiendo', 'Conozco el tema', 'Ya lo hice']
+const EXPECTATIVA_OPS    = ['Ordenar mis finanzas', 'Acceder a financiamiento', 'Bajar el costo financiero', 'Entender mis números', 'Acompañamiento estratégico']
+
+const EMPTY_ENC = {
+  problema:         '',
+  perdio_oport:     false,
+  desc_oport:       '',
+  financiamiento:   [],
+  certeza_cobro:    '',
+  objetivo:         '',
+  conoce_mercado:   '',
+  expectativa:      [],
+  comentario:       '',
 }
 
-// ── Componentes de UI reutilizables ────────────────────────────────
-function ProgressBar({ current }) {
-  return (
-    <div className="flex items-start mb-8 max-w-2xl mx-auto">
-      {STEPS.map((s, i) => {
-        const isDone = s.n < current
-        const isActive = s.n === current
-        return (
-          <div key={s.n} className="flex-1 flex items-start">
-            <div className="flex flex-col items-center flex-1">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all
-                  ${isDone   ? 'bg-brand-600 text-white' :
-                    isActive ? 'bg-brand-600 text-white ring-4 ring-brand-100' :
-                               'bg-white border-2 border-slate-200 text-slate-400'}`}
-              >
-                {isDone ? <CheckCircle size={14} /> : s.n}
-              </div>
-              <span
-                className={`text-xs mt-1.5 font-medium text-center leading-tight
-                  ${isActive ? 'text-brand-700' : isDone ? 'text-brand-600' : 'text-slate-400'}`}
-              >
-                {s.label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div
-                className={`h-0.5 flex-1 mt-4 mx-1 transition-colors
-                  ${isDone ? 'bg-brand-600' : 'bg-slate-200'}`}
-              />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function Field({ label, hint, optional, children }) {
-  return (
-    <div className="mb-5">
-      <label className="block text-sm font-medium text-navy-800 mb-1.5">
-        {label}
-        {optional && <span className="text-slate-400 font-normal ml-1 text-xs">(opcional)</span>}
-      </label>
-      {children}
-      {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
-    </div>
-  )
-}
-
-function YesNo({ value, onChange }) {
+// ── UI Atoms ─────────────────────────────────────────────────────────
+function SiNo({ value, onChange }) {
   return (
     <div className="flex gap-2">
       {[{ v: true, l: 'Sí' }, { v: false, l: 'No' }].map(({ v, l }) => (
-        <button
-          key={String(v)}
-          type="button"
-          onClick={() => onChange(v)}
-          className={`px-6 py-2 rounded-lg text-sm font-medium border transition-colors
-            ${value === v
-              ? 'bg-brand-600 text-white border-brand-600'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-brand-300 hover:text-navy-700'}`}
-        >
+        <button key={String(v)} type="button" onClick={() => onChange(v)}
+          className={`px-5 py-1.5 rounded-lg text-sm font-medium border transition-colors
+            ${value === v ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:border-brand-300'}`}>
           {l}
         </button>
       ))}
@@ -117,615 +51,429 @@ function YesNo({ value, onChange }) {
   )
 }
 
-function MoneyInput({ value, onChange, placeholder = 'Ej: 1500000' }) {
+function MultiToggle({ options, value = [], onChange }) {
+  const toggle = item => onChange(value.includes(item) ? value.filter(x => x !== item) : [...value, item])
   return (
-    <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium pointer-events-none">
-        $
-      </span>
-      <input
-        type="number"
-        min="0"
-        step="1"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="input pl-7"
-      />
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button key={opt} type="button" onClick={() => toggle(opt)}
+          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors
+            ${value.includes(opt) ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:border-brand-300'}`}>
+          {opt}
+        </button>
+      ))}
     </div>
   )
 }
 
-function DaysInput({ value, onChange, placeholder = 'Ej: 30' }) {
+function Opcion({ options, value, onChange }) {
   return (
-    <div className="relative">
-      <input
-        type="number"
-        min="0"
-        max="365"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="input pr-14"
-      />
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">
-        días
-      </span>
+    <div className="flex flex-col gap-2">
+      {options.map(opt => (
+        <button key={opt} type="button" onClick={() => onChange(opt)}
+          className={`text-left px-4 py-2.5 rounded-lg text-sm border transition-colors
+            ${value === opt ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-600 border-slate-200 hover:border-brand-300'}`}>
+          {opt}
+        </button>
+      ))}
     </div>
   )
 }
 
-// ── Paso 1: Tu negocio ─────────────────────────────────────────────
-function Paso1({ data, set }) {
+function Pregunta({ numero, texto, children }) {
   return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-navy-800 mb-1">Contanos sobre tu negocio</h3>
-      <p className="text-sm text-slate-500 mb-5">Respondé con tus propias palabras — no hace falta ser técnico.</p>
-
-      <Field label="¿A qué se dedica tu empresa? ¿Qué hacés o vendés?">
-        <textarea
-          rows={3}
-          value={data.lineas_negocio}
-          onChange={e => set('lineas_negocio', e.target.value)}
-          placeholder="Ej: Fabricamos y vendemos ropa deportiva. Tenemos local propio y también vendemos por mayor a otros negocios del NOA..."
-          className="input resize-none"
-        />
-      </Field>
-
-      <Field label="¿Tu negocio tiene meses buenos y meses flojos?">
-        <div className="flex flex-col gap-2">
-          {[
-            { v: 'ninguna',  l: 'No, es parejo todo el año' },
-            { v: 'moderada', l: 'Sí, hay meses un poco mejores que otros' },
-            { v: 'fuerte',   l: 'Muy marcada — en ciertos meses se concentra casi todo lo que ganamos' },
-          ].map(({ v, l }) => (
-            <label key={v} className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="radio"
-                name="estacionalidad"
-                value={v}
-                checked={data.estacionalidad === v}
-                onChange={() => set('estacionalidad', v)}
-                className="w-4 h-4 text-brand-600 border-slate-300 focus:ring-brand-500"
-              />
-              <span className="text-sm text-slate-700 group-hover:text-navy-800">{l}</span>
-            </label>
-          ))}
-        </div>
-      </Field>
-
-      <Field
-        label="¿Cuánto dependen tus ventas de tus 3 principales clientes?"
-        hint="Esto nos ayuda a entender qué tan concentrado está tu negocio"
-      >
-        <select
-          value={data.concentracion_top3}
-          onChange={e => set('concentracion_top3', e.target.value)}
-          className="input"
-        >
-          <option value="">Elegí una opción...</option>
-          <option value="12.5">Menos del 25% — tengo muchos clientes distintos</option>
-          <option value="37.5">Entre 25% y 50%</option>
-          <option value="62.5">Entre 50% y 75%</option>
-          <option value="87.5">Más del 75% — dependo de pocos clientes grandes</option>
-        </select>
-      </Field>
-
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div>
-          <label className="block text-sm font-medium text-navy-800 mb-1.5">¿Facturás en dólares?</label>
-          <YesNo value={data.factura_usd} onChange={v => set('factura_usd', v)} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-navy-800 mb-1.5">¿Exportás productos?</label>
-          <YesNo value={data.exporta} onChange={v => set('exporta', v)} />
-        </div>
-      </div>
-
-      <Field label="¿Cuál es el mayor problema de tu empresa hoy?">
-        <textarea
-          rows={2}
-          value={data.dolor_principal}
-          onChange={e => set('dolor_principal', e.target.value)}
-          placeholder="Ej: Nos cuesta cobrar a tiempo y eso nos deja cortos de caja a fin de mes..."
-          className="input resize-none"
-        />
-      </Field>
-
-      <Field label="¿Qué decisión importante tenés frenada o pendiente?" optional>
-        <input
-          type="text"
-          value={data.decision_pendiente}
-          onChange={e => set('decision_pendiente', e.target.value)}
-          placeholder="Ej: Comprar una máquina nueva, abrir una sucursal, contratar más gente..."
-          className="input"
-        />
-      </Field>
-
-      <Field label="¿Qué querés lograr en los próximos 12 meses?">
-        <textarea
-          rows={2}
-          value={data.objetivo_12meses}
-          onChange={e => set('objetivo_12meses', e.target.value)}
-          placeholder="Ej: Bajar la deuda a la mitad y aumentar las ventas un 30%..."
-          className="input resize-none"
-        />
-      </Field>
+    <div className="mb-6 pb-6 border-b border-slate-100 last:border-0 last:pb-0 last:mb-0">
+      <p className="text-sm font-medium text-navy-800 mb-3">
+        <span className="inline-flex w-6 h-6 rounded-full bg-brand-600 text-white text-xs items-center justify-center font-bold mr-2 flex-shrink-0">
+          {numero}
+        </span>
+        {texto}
+      </p>
+      {children}
     </div>
   )
 }
 
-// ── Paso 2: Ventas y costos ────────────────────────────────────────
-function Paso2({ data, set }) {
+// ── Paso A — Subir balance ────────────────────────────────────────────
+function PasoBalance({ empresa, onCompletado }) {
+  const [subiendo,  setSubiendo]  = useState(false)
+  const [error,     setError]     = useState(null)
+  const [arrastrar, setArrastrar] = useState(false)
+  const fileRef = useRef(null)
+
+  async function subirArchivo(file) {
+    if (!file || file.type !== 'application/pdf') {
+      setError('Solo se aceptan archivos PDF.')
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setError('El archivo no puede superar los 20 MB.')
+      return
+    }
+    setSubiendo(true); setError(null)
+    try {
+      const { error: upErr } = await storageClient.storage
+        .from('balances-cliente')
+        .upload(`${empresa.id}/balance.pdf`, file, { upsert: true })
+      if (upErr) {
+        console.error('[Upload] Error completo:', upErr)
+        throw new Error(upErr.message || JSON.stringify(upErr))
+      }
+
+      // Marcar hito en localStorage ANTES del update de DB
+      // (garantiza persistencia incluso si el update falla)
+      marcarHito(empresa.id, 'balance')
+
+      const { error: dbErr } = await supabase.from('empresas')
+        .update({ balance_subido_por_cliente: true, etapa_diagnostico: 2 })
+        .eq('id', empresa.id)
+      if (dbErr) console.warn('[Upload] DB update error (hito guardado en local):', dbErr.message)
+
+      // Notificar al asesor en segundo plano
+      notificarAsesor(empresa.id, empresa.nombre,
+        `📥 ${empresa.nombre} subió su balance. Revisalo y completá el análisis.`
+      ).catch(e => console.warn('[Upload] notificarAsesor:', e))
+
+      onCompletado()
+    } catch (e) {
+      setError('No se pudo subir el archivo. Intentá de nuevo.')
+      console.error('[DiagnosticoPage] upload:', e)
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
   return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-navy-800 mb-1">Tus ventas y costos del último año</h3>
-      <p className="text-sm text-slate-500 mb-5">
-        Ponelos lo más aproximado que puedas — no tienen que ser exactos al peso.
+    <div>
+      <h2 className="text-xl font-bold text-navy-800 mb-1">Subí el balance de tu empresa</h2>
+      <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+        Es el documento que prepara tu contador cada año. Si no lo tenés a mano, pedíselo —
+        es el balance o los estados contables.
       </p>
 
-      <Field
-        label="¿Cuánto vendiste en total el año pasado?"
-        hint="El total de tus ingresos por ventas antes de impuestos"
+      <div
+        onDragOver={e => { e.preventDefault(); setArrastrar(true) }}
+        onDragLeave={() => setArrastrar(false)}
+        onDrop={e => { e.preventDefault(); setArrastrar(false); subirArchivo(e.dataTransfer.files[0]) }}
+        onClick={() => fileRef.current?.click()}
+        className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all
+          ${arrastrar ? 'border-brand-400 bg-brand-50' : 'border-slate-200 bg-slate-50 hover:border-brand-300 hover:bg-brand-50/50'}`}
       >
-        <MoneyInput value={data.ventas_netas} onChange={v => set('ventas_netas', v)} placeholder="Ej: 15000000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto te costó lo que vendiste?"
-        hint="La mercadería, las materias primas o lo que pagaste para producir lo que vendiste"
-      >
-        <MoneyInput value={data.costo_ventas} onChange={v => set('costo_ventas', v)} placeholder="Ej: 9000000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto pagaste de sueldos en el año?"
-        hint="Incluí todos los sueldos, cargas sociales y aguinaldo"
-      >
-        <MoneyInput value={data.gastos_personal} onChange={v => set('gastos_personal', v)} placeholder="Ej: 2400000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto te costó mantener la oficina o el local?"
-        hint="Alquiler, servicios, internet, papelería, honorarios y otros gastos fijos"
-      >
-        <MoneyInput value={data.gastos_admin} onChange={v => set('gastos_admin', v)} placeholder="Ej: 800000" />
-      </Field>
-
-      <Field label="¿Cuál es tu mayor costo?">
-        <input
-          type="text"
-          value={data.principal_costo}
-          onChange={e => set('principal_costo', e.target.value)}
-          placeholder="Ej: La mercadería importada, los sueldos, el alquiler..."
-          className="input"
-        />
-      </Field>
-
-      <Field
-        label="¿Cuánto de tus costos no cambian si vendés más o menos?"
-        hint="Por ejemplo: el alquiler y los sueldos son fijos; la mercadería varía con las ventas"
-      >
-        <select
-          value={data.pct_costos_fijos}
-          onChange={e => set('pct_costos_fijos', e.target.value)}
-          className="input"
-        >
-          <option value="">Elegí una opción...</option>
-          <option value="10">Menos del 20% — casi todo varía con las ventas</option>
-          <option value="30">Entre 20% y 40%</option>
-          <option value="50">Entre 40% y 60%</option>
-          <option value="70">Más del 60% — la mayoría son fijos</option>
-        </select>
-      </Field>
-    </div>
-  )
-}
-
-// ── Paso 3: Plata y deudas ─────────────────────────────────────────
-function Paso3({ data, set }) {
-  return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-navy-800 mb-1">Tu plata disponible y tus deudas</h3>
-      <p className="text-sm text-slate-500 mb-5">
-        Estos números nos ayudan a ver si tu empresa tiene suficiente oxígeno financiero.
-      </p>
-
-      <Field
-        label="¿Cuánto dinero tenés disponible hoy?"
-        hint="Todo lo que tenés en caja, cuenta bancaria y plazos fijos"
-      >
-        <MoneyInput value={data.caja} onChange={v => set('caja', v)} placeholder="Ej: 500000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto te deben tus clientes en este momento?"
-        hint="Facturas pendientes de cobro, cheques recibidos, cuentas corrientes a tu favor"
-      >
-        <MoneyInput value={data.deudores} onChange={v => set('deudores', v)} placeholder="Ej: 1200000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto tenés en stock o mercadería?"
-        hint="El valor de todo lo que tenés almacenado listo para vender o producir"
-      >
-        <MoneyInput value={data.stock} onChange={v => set('stock', v)} placeholder="Ej: 800000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto debés en total?"
-        hint="Sumá préstamos bancarios, tarjetas, deudas con proveedores — todo lo que debés"
-      >
-        <MoneyInput value={data.deuda_total} onChange={v => set('deuda_total', v)} placeholder="Ej: 3000000" />
-      </Field>
-
-      <Field
-        label="¿Cuánto de esa deuda tenés que pagar en menos de un año?"
-        hint="Las cuotas y vencimientos que caen en los próximos 12 meses"
-      >
-        <MoneyInput value={data.pasivo_corriente} onChange={v => set('pasivo_corriente', v)} placeholder="Ej: 1200000" />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field
-          label="¿En cuántos días cobran tus clientes?"
-          hint="Promedio desde que vendés hasta que te pagan"
-        >
-          <DaysInput value={data.dias_cobro} onChange={v => set('dias_cobro', v)} placeholder="Ej: 30" />
-        </Field>
-
-        <Field
-          label="¿En cuántos días pagás a tus proveedores?"
-          hint="Promedio desde que comprás hasta que pagás"
-        >
-          <DaysInput value={data.dias_pago} onChange={v => set('dias_pago', v)} placeholder="Ej: 15" />
-        </Field>
-      </div>
-    </div>
-  )
-}
-
-// ── Paso 4: Tus bienes ─────────────────────────────────────────────
-function Paso4({ data, set }) {
-  return (
-    <div className="card p-6">
-      <h3 className="text-base font-semibold text-navy-800 mb-1">Tus bienes y el valor de la empresa</h3>
-      <p className="text-sm text-slate-500 mb-5">
-        Esta info nos ayuda a entender qué garantías y activos tiene tu empresa.
-      </p>
-
-      <Field label="¿Tenés un local, galpón o inmueble propio?">
-        <YesNo value={data.inmueble_propio} onChange={v => set('inmueble_propio', v)} />
-        {data.inmueble_propio && (
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-navy-800 mb-1.5">
-              ¿Cuánto calculás que vale?
-              <span className="text-slate-400 font-normal ml-1 text-xs">(opcional)</span>
-            </label>
-            <MoneyInput
-              value={data.valor_inmueble}
-              onChange={v => set('valor_inmueble', v)}
-              placeholder="Ej: 50000000"
-            />
-          </div>
+        <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={e => subirArchivo(e.target.files[0])} />
+        {subiendo ? (
+          <>
+            <svg className="animate-spin w-8 h-8 text-brand-600 mx-auto mb-3" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            <p className="text-sm font-medium text-brand-700">Subiendo tu balance...</p>
+          </>
+        ) : (
+          <>
+            <Upload size={36} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-navy-700 mb-1">Arrastrá el PDF acá o hacé click para buscarlo</p>
+            <p className="text-xs text-slate-400">Solo PDF · máximo 20 MB</p>
+          </>
         )}
-      </Field>
-
-      <Field label="¿Tenés cheques diferidos o ECHEQs para cobrar?">
-        <YesNo value={data.echeqs_disponibles} onChange={v => set('echeqs_disponibles', v)} />
-        {data.echeqs_disponibles && (
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-navy-800 mb-1.5">
-              ¿Por cuánto monto aproximado?
-              <span className="text-slate-400 font-normal ml-1 text-xs">(opcional)</span>
-            </label>
-            <MoneyInput
-              value={data.valor_echeqs}
-              onChange={v => set('valor_echeqs', v)}
-              placeholder="Ej: 2000000"
-            />
-          </div>
-        )}
-      </Field>
-
-      <Field
-        label="¿Cuánto calculás que vale tu empresa hoy?"
-        optional
-        hint="Es todo lo que tiene la empresa (maquinaria, stock, plata, inmuebles) menos todo lo que debe. Si no sabés, dejalo en blanco."
-      >
-        <MoneyInput value={data.patrimonio_neto} onChange={v => set('patrimonio_neto', v)} placeholder="Ej: 20000000" />
-      </Field>
-
-      <div className="mt-4 p-4 rounded-lg bg-brand-50 border border-brand-100">
-        <p className="text-sm text-brand-800 font-medium mb-0.5">¡Casi terminaste!</p>
-        <p className="text-xs text-brand-700">
-          Al hacer clic en "Completar diagnóstico" guardamos todo y tu asesor va a poder ver el análisis completo de tu empresa.
-        </p>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+          <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      <p className="text-xs text-slate-400 text-center mt-4">
+        Tu información es confidencial y solo la ve tu asesor.
+      </p>
     </div>
   )
 }
 
-// ── Componente principal ───────────────────────────────────────────
+// ── Paso B — Encuesta ────────────────────────────────────────────────
+function PasoEncuesta({ empresa, onCompletado }) {
+  const [enc,     setEnc]     = useState(EMPTY_ENC)
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState(null)
+
+  function set(k, v) { setEnc(prev => ({ ...prev, [k]: v })) }
+
+  async function handleEnviar() {
+    if (!enc.problema.trim())    { setError('Por favor respondé la pregunta 1.'); return }
+    if (!enc.certeza_cobro)      { setError('Por favor respondé la pregunta 4.'); return }
+    if (!enc.objetivo.trim())    { setError('Por favor respondé la pregunta 5.'); return }
+    if (!enc.conoce_mercado)     { setError('Por favor respondé la pregunta 6.'); return }
+    if (!enc.expectativa.length) { setError('Por favor respondé la pregunta 7.'); return }
+
+    setSaving(true); setError(null)
+    try {
+      // Cargar d5 existente para merge inteligente
+      const { data: dp } = await supabase.from('diagnostico_profundo')
+        .select('dimension5').eq('empresa_id', empresa.id).maybeSingle()
+      const d5base = dp?.dimension5 || {}
+
+      const d5nuevo = {
+        ...d5base,
+        problema_financiero:    enc.problema,
+        perdio_oportunidad:     enc.perdio_oport,
+        descripcion_oportunidad: enc.desc_oport,
+        financiamiento_dia_dia:  enc.financiamiento,
+        certeza_cobro:           enc.certeza_cobro,
+        objetivo_12meses:        enc.objetivo,
+        conoce_mercado_capitales: enc.conoce_mercado,
+        expectativa_cfoconnect:  enc.expectativa,
+        comentario_libre:        enc.comentario,
+      }
+
+      await supabase.from('diagnostico_profundo').upsert({
+        empresa_id: empresa.id,
+        estado:     'borrador',
+        dimension5: d5nuevo,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'empresa_id' })
+
+      // Marcar hito en localStorage ANTES del update de DB
+      marcarHito(empresa.id, 'balance')   // asegurar que balance también quede
+      marcarHito(empresa.id, 'encuesta')
+
+      const { error: dbErr2 } = await supabase.from('empresas')
+        .update({ encuesta_completada: true, etapa_diagnostico: 3 })
+        .eq('id', empresa.id)
+      if (dbErr2) console.warn('[Encuesta] DB update error (hito guardado en local):', dbErr2.message)
+
+      // Notificar al asesor en segundo plano
+      notificarAsesor(empresa.id, empresa.nombre,
+        `✍ ${empresa.nombre} completó la encuesta. Toda la información está lista para el diagnóstico.`
+      ).catch(e => console.warn('[Encuesta] notificarAsesor:', e))
+
+      onCompletado()
+    } catch (e) {
+      setError('No se pudo guardar. Intentá de nuevo.')
+      console.error('[DiagnosticoPage] encuesta:', e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-navy-800 mb-1">Contanos sobre tu empresa</h2>
+      <p className="text-sm text-slate-500 mb-6">8 preguntas simples — menos de 5 minutos</p>
+
+      <div className="space-y-0">
+        <Pregunta numero={1} texto="¿Cuál es el mayor problema financiero que tiene tu empresa hoy?">
+          <textarea rows={3} value={enc.problema} onChange={e => set('problema', e.target.value)}
+            className="input resize-none" placeholder="Ej: me cuesta cobrar a tiempo, necesito financiamiento para crecer..." />
+        </Pregunta>
+
+        <Pregunta numero={2} texto="¿Hubo algo que quisiste hacer pero no pudiste por falta de financiamiento?">
+          <SiNo value={enc.perdio_oport} onChange={v => set('perdio_oport', v)} />
+          {enc.perdio_oport && (
+            <textarea rows={2} value={enc.desc_oport} onChange={e => set('desc_oport', e.target.value)}
+              className="input resize-none mt-3" placeholder="Contanos qué pasó..." />
+          )}
+        </Pregunta>
+
+        <Pregunta numero={3} texto="¿Cómo financiás el día a día de tu empresa?">
+          <MultiToggle options={FINANCIAMIENTO_OPS} value={enc.financiamiento} onChange={v => set('financiamiento', v)} />
+        </Pregunta>
+
+        <Pregunta numero={4} texto="¿Sabés cuánto dinero va a entrar el mes que viene?">
+          <Opcion options={CERTEZA_OPS} value={enc.certeza_cobro} onChange={v => set('certeza_cobro', v)} />
+        </Pregunta>
+
+        <Pregunta numero={5} texto="¿Qué querés lograr en los próximos 12 meses?">
+          <textarea rows={2} value={enc.objetivo} onChange={e => set('objetivo', e.target.value)}
+            className="input resize-none" placeholder="Ej: reducir la deuda, abrir una sucursal, profesionalizar la empresa..." />
+        </Pregunta>
+
+        <Pregunta numero={6} texto="¿Alguna vez escuchaste hablar de descontar cheques o facturas en el mercado de capitales?">
+          <Opcion options={MERCADO_OPS} value={enc.conoce_mercado} onChange={v => set('conoce_mercado', v)} />
+        </Pregunta>
+
+        <Pregunta numero={7} texto="¿Qué esperás de este servicio? (podés elegir varias)">
+          <MultiToggle options={EXPECTATIVA_OPS} value={enc.expectativa} onChange={v => set('expectativa', v)} />
+        </Pregunta>
+
+        <Pregunta numero={8} texto="¿Hay algo más que quieras contarnos?">
+          <textarea rows={2} value={enc.comentario} onChange={e => set('comentario', e.target.value)}
+            className="input resize-none" placeholder="Opcional — cualquier cosa que quieras agregar..." />
+        </Pregunta>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+          <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      <button onClick={handleEnviar} disabled={saving}
+        className="btn-primary w-full justify-center mt-6 py-3 disabled:opacity-60">
+        {saving ? 'Enviando...' : 'Enviar mis respuestas →'}
+      </button>
+    </div>
+  )
+}
+
+// ── Pantalla de confirmación ──────────────────────────────────────────
+function Confirmacion() {
+  return (
+    <div className="text-center py-6">
+      <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4">
+        <CheckCircle size={32} className="text-brand-600" />
+      </div>
+      <h2 className="text-xl font-bold text-navy-800 mb-2">¡Listo!</h2>
+      <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+        Tu asesor ya tiene toda la información y está preparando tu diagnóstico.
+        Te avisaremos cuando esté listo.
+      </p>
+    </div>
+  )
+}
+
+// ── Componente principal ──────────────────────────────────────────────
+// ── Helpers de persistencia de hitos ──────────────────────────────
+function lsKey(empId, hito) { return `nx_hito_${empId}_${hito}` }
+function marcarHito(empId, hito) { localStorage.setItem(lsKey(empId, hito), '1') }
+function tieneHito(empId, hito)  { return localStorage.getItem(lsKey(empId, hito)) === '1' }
+
+// ── Notificar al asesor (alerta + mensaje automático) ─────────────
+async function notificarAsesor(empresaId, empresaNombre, mensaje) {
+  // 1. Alerta persistente visible en el panel del asesor
+  const alertaPayload = {
+    empresa_id: empresaId,
+    tipo:       'general',
+    nivel:      'alto',
+    mensaje,
+    leida:      false,
+  }
+  // Intentar con campo origen, fallback sin él
+  const { error: e1 } = await supabase.from('alertas')
+    .insert({ ...alertaPayload, origen: 'cliente_automatico' })
+  if (e1) {
+    await supabase.from('alertas').insert(alertaPayload)
+  }
+
+  // 2. Mensaje automático en el chat (aparece en la sección Mensajes del asesor)
+  await supabase.from('mensajes').insert({
+    empresa_id:    empresaId,
+    remitente_id:  (await supabase.auth.getUser()).data.user?.id,
+    remitente_rol: 'cliente',
+    contenido:     mensaje,
+    leido:         false,
+  })
+}
+
 export default function DiagnosticoPage() {
   const { empresa } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [step, setStep] = useState(1)
-  const [data, setData] = useState(EMPTY_DATA)
+  const [paso,    setPaso]    = useState(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState(null)
 
-  // Cargar datos existentes al montar
   useEffect(() => {
-    if (!empresa) return
+    if (!empresa?.id) return
+    const id = empresa.id
 
-    async function cargarDatos() {
-      // Cargar diagnóstico cualitativo
-      const { data: diag } = await supabase
-        .from('diagnostico')
-        .select('*')
-        .eq('empresa_id', empresa.id)
-        .maybeSingle()
+    async function cargarEstado() {
+      try {
+        const { data, error } = await supabase.from('empresas')
+          .select('balance_subido_por_cliente, encuesta_completada, etapa_diagnostico')
+          .eq('id', id)
+          .single()
 
-      if (diag) {
-        const g = diag.garantias || {}
-        setData(prev => ({
-          ...prev,
-          lineas_negocio:    diag.lineas_negocio    || '',
-          estacionalidad:    diag.estacionalidad    || '',
-          concentracion_top3: diag.concentracion_top3 != null ? String(diag.concentracion_top3) : '',
-          factura_usd:       diag.factura_usd       ?? false,
-          exporta:           diag.exporta           ?? false,
-          dolor_principal:   diag.dolor_principal   || '',
-          decision_pendiente: diag.decision_pendiente || '',
-          objetivo_12meses:  diag.objetivo_12meses  || '',
-          principal_costo:   diag.principal_costo   || '',
-          pct_costos_fijos:  diag.pct_costos_fijos  != null ? String(diag.pct_costos_fijos) : '',
-          // Bienes
-          inmueble_propio:   g.inmueble_propio      ?? false,
-          valor_inmueble:    g.valor_inmueble        != null ? String(g.valor_inmueble) : '',
-          echeqs_disponibles: g.echeqs_disponibles  ?? false,
-          valor_echeqs:      g.valor_echeqs          != null ? String(g.valor_echeqs) : '',
-          // Datos financieros guardados para resumir el formulario
-          caja:    g._caja    != null ? String(g._caja)    : '',
-          deudores: g._deudores != null ? String(g._deudores) : '',
-        }))
+        if (error) console.warn('[DiagnosticoPage] error al leer estado:', error.message)
 
-        // Si ya está completo y no viene del botón "Editar", redirigir a resultados
-        if (diag.estado === 'completo' && !location.state?.edit) {
-          navigate('/diagnostico/resultados', { replace: true })
-          return
+        // DB es la fuente principal, localStorage es fallback
+        const balanceDb  = data?.balance_subido_por_cliente  ?? false
+        const encuestaDb = data?.encuesta_completada         ?? false
+        const etapaDb    = data?.etapa_diagnostico           ?? 1
+
+        // Combinar DB + localStorage: usar el estado más avanzado
+        const balanceOk  = balanceDb  || tieneHito(id, 'balance')
+        const encuestaOk = encuestaDb || tieneHito(id, 'encuesta')
+        const etapaOk    = etapaDb >= 3 || tieneHito(id, 'encuesta')
+
+        if (encuestaOk || etapaOk) {
+          setPaso('listo')
+        } else if (balanceOk) {
+          setPaso('encuesta')
+        } else {
+          setPaso('balance')
         }
-      }
-
-      // Cargar datos numéricos del último período anual
-      const { data: periodo } = await supabase
-        .from('periodos_financieros')
-        .select('*')
-        .eq('empresa_id', empresa.id)
-        .eq('tipo_periodo', 'año')
-        .order('periodo', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (periodo) {
-        setData(prev => ({
-          ...prev,
-          ventas_netas:    periodo.ventas_netas    ? String(periodo.ventas_netas)    : prev.ventas_netas,
-          costo_ventas:    periodo.costo_ventas    ? String(periodo.costo_ventas)    : prev.costo_ventas,
-          gastos_personal: periodo.gastos_personal ? String(periodo.gastos_personal) : prev.gastos_personal,
-          gastos_admin:    periodo.gastos_admin    ? String(periodo.gastos_admin)    : prev.gastos_admin,
-          stock:           periodo.stock           ? String(periodo.stock)           : prev.stock,
-          deuda_total:     periodo.deuda_total     ? String(periodo.deuda_total)     : prev.deuda_total,
-          pasivo_corriente: periodo.pasivo_corriente ? String(periodo.pasivo_corriente) : prev.pasivo_corriente,
-          dias_cobro:      periodo.dias_cobro      ? String(periodo.dias_cobro)      : prev.dias_cobro,
-          dias_pago:       periodo.dias_pago       ? String(periodo.dias_pago)       : prev.dias_pago,
-          patrimonio_neto: periodo.patrimonio_neto ? String(periodo.patrimonio_neto) : prev.patrimonio_neto,
-        }))
-      }
-
-      // Restaurar paso desde localStorage
-      const pasoGuardado = localStorage.getItem(`diag_step_${empresa.id}`)
-      if (pasoGuardado) setStep(Number(pasoGuardado))
-
-      setLoading(false)
-    }
-
-    cargarDatos()
-  }, [empresa])
-
-  function actualizar(campo, valor) {
-    setData(prev => ({ ...prev, [campo]: valor }))
-    setSaved(false)
-  }
-
-  async function guardar(esCompleto = false) {
-    setSaving(true)
-    setError(null)
-
-    const garantias = {
-      inmueble_propio:    data.inmueble_propio,
-      valor_inmueble:     data.valor_inmueble    ? Number(data.valor_inmueble)    : null,
-      echeqs_disponibles: data.echeqs_disponibles,
-      valor_echeqs:       data.valor_echeqs      ? Number(data.valor_echeqs)      : null,
-      // Guardamos el desglose para poder restaurar el formulario
-      _caja:    data.caja    ? Number(data.caja)    : null,
-      _deudores: data.deudores ? Number(data.deudores) : null,
-    }
-
-    const payloadDiag = {
-      empresa_id:         empresa.id,
-      estado:             esCompleto ? 'completo' : 'borrador',
-      lineas_negocio:     data.lineas_negocio     || null,
-      estacionalidad:     data.estacionalidad     || null,
-      concentracion_top3: data.concentracion_top3  ? Number(data.concentracion_top3) : null,
-      factura_usd:        data.factura_usd,
-      exporta:            data.exporta,
-      dolor_principal:    data.dolor_principal     || null,
-      decision_pendiente: data.decision_pendiente  || null,
-      objetivo_12meses:   data.objetivo_12meses    || null,
-      principal_costo:    data.principal_costo     || null,
-      pct_costos_fijos:   data.pct_costos_fijos    ? Number(data.pct_costos_fijos) : null,
-      garantias,
-      updated_at:         new Date().toISOString(),
-    }
-
-    const { error: errDiag } = await supabase
-      .from('diagnostico')
-      .upsert(payloadDiag, { onConflict: 'empresa_id' })
-
-    if (errDiag) {
-      setError('No pudimos guardar. Revisá tu conexión e intentá de nuevo.')
-      setSaving(false)
-      return false
-    }
-
-    // Al completar el paso 4, guardar también en periodos_financieros
-    if (esCompleto) {
-      const anio = String(new Date().getFullYear() - 1)
-      const activo_corriente =
-        (Number(data.caja) || 0) + (Number(data.deudores) || 0) + (Number(data.stock) || 0)
-
-      const payloadPeriodo = {
-        empresa_id:       empresa.id,
-        periodo:          anio,
-        tipo_periodo:     'año',
-        ventas_netas:     Number(data.ventas_netas)    || 0,
-        costo_ventas:     Number(data.costo_ventas)    || 0,
-        gastos_personal:  Number(data.gastos_personal) || 0,
-        gastos_admin:     Number(data.gastos_admin)    || 0,
-        activo_corriente,
-        stock:            Number(data.stock)           || 0,
-        pasivo_corriente: Number(data.pasivo_corriente) || 0,
-        deuda_total:      Number(data.deuda_total)     || 0,
-        dias_cobro:       Number(data.dias_cobro)      || 0,
-        dias_pago:        Number(data.dias_pago)       || 0,
-        patrimonio_neto:  Number(data.patrimonio_neto) || 0,
-      }
-
-      const { error: errPeriodo } = await supabase
-        .from('periodos_financieros')
-        .upsert(payloadPeriodo, { onConflict: 'empresa_id,periodo' })
-
-      if (errPeriodo) {
-        setError('Los datos financieros no se guardaron correctamente. Intentá de nuevo.')
-        setSaving(false)
-        return false
+      } catch (e) {
+        console.error('[DiagnosticoPage] cargarEstado excepción:', e)
+        // Fallback total a localStorage
+        const balanceLocal  = tieneHito(id, 'balance')
+        const encuestaLocal = tieneHito(id, 'encuesta')
+        if (encuestaLocal) setPaso('listo')
+        else if (balanceLocal) setPaso('encuesta')
+        else setPaso('balance')
+      } finally {
+        setLoading(false)
       }
     }
 
-    setSaving(false)
-    setSaved(true)
-    return true
-  }
+    cargarEstado()
+  }, [empresa?.id])
 
-  async function handleSiguiente() {
-    const ok = await guardar(false)
-    if (!ok) return
-    const siguiente = step + 1
-    setStep(siguiente)
-    localStorage.setItem(`diag_step_${empresa.id}`, siguiente)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  if (loading || !empresa) return (
+    <div className="flex-1 flex items-center justify-center">
+      <p className="text-sm text-slate-400">Cargando...</p>
+    </div>
+  )
 
-  async function handleCompletar() {
-    const ok = await guardar(true)
-    if (ok) navigate('/diagnostico/resultados')
-  }
-
-  function handleAnterior() {
-    const anterior = step - 1
-    setStep(anterior)
-    localStorage.setItem(`diag_step_${empresa.id}`, anterior)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-sm text-slate-400">Cargando tu diagnóstico...</div>
-      </div>
-    )
-  }
+  // Indicadores de progreso (2 pasos)
+  const steps = [
+    { id: 'balance',  label: 'Tu balance'  },
+    { id: 'encuesta', label: 'Tu situación' },
+  ]
+  const stepIdx = paso === 'balance' ? 0 : paso === 'encuesta' ? 1 : 2
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <PageHeader
-        title="Diagnóstico financiero"
-        subtitle="Contanos sobre tu empresa — solo lleva unos minutos"
-        actions={
-          <span className="badge badge-amber">En progreso</span>
-        }
-      />
-
+      <PageHeader title="Mi perfil financiero" subtitle={empresa?.nombre} />
       <div className="flex-1 overflow-y-auto p-6 animate-slide-up">
-        <ProgressBar current={step} />
+        <div className="max-w-xl mx-auto">
 
-        <div className="max-w-2xl mx-auto">
-          {step === 1 && <Paso1 data={data} set={actualizar} />}
-          {step === 2 && <Paso2 data={data} set={actualizar} />}
-          {step === 3 && <Paso3 data={data} set={actualizar} />}
-          {step === 4 && <Paso4 data={data} set={actualizar} />}
-
-          {/* Error */}
-          {error && (
-            <div className="flex items-start gap-2.5 mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
-              <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-red-700">{error}</span>
+          {/* Progress (solo si no completado) */}
+          {paso !== 'listo' && (
+            <div className="flex items-center gap-2 mb-8">
+              {steps.map((s, i) => {
+                const done   = i < stepIdx
+                const active = i === stepIdx
+                return (
+                  <div key={s.id} className="flex items-center gap-2 flex-1">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+                      ${done ? 'bg-brand-600 text-white' : active ? 'bg-brand-600 text-white ring-4 ring-brand-100' : 'bg-slate-100 text-slate-400'}`}>
+                      {done ? <CheckCircle size={14} /> : i + 1}
+                    </div>
+                    <span className={`text-xs font-medium ${active ? 'text-brand-700' : done ? 'text-brand-600' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
+                    {i < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 ${done ? 'bg-brand-400' : 'bg-slate-200'}`} />}
+                  </div>
+                )
+              })}
             </div>
           )}
 
-          {/* Navegación */}
-          <div className="flex items-center justify-between mt-6">
-            <button
-              type="button"
-              onClick={handleAnterior}
-              disabled={step === 1}
-              className="btn-secondary flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft size={16} />
-              Anterior
-            </button>
-
-            <div className="flex items-center gap-3">
-              {saved && !saving && (
-                <span className="flex items-center gap-1 text-xs text-brand-600 font-medium">
-                  <CheckCircle size={13} />
-                  Guardado
-                </span>
-              )}
-
-              {step < 4 ? (
-                <button
-                  type="button"
-                  onClick={handleSiguiente}
-                  disabled={saving}
-                  className="btn-primary flex items-center gap-1.5 disabled:opacity-60"
-                >
-                  {saving ? 'Guardando...' : 'Guardar y continuar'}
-                  {!saving && <ChevronRight size={16} />}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCompletar}
-                  disabled={saving}
-                  className="btn-primary flex items-center gap-1.5 disabled:opacity-60"
-                >
-                  {saving ? 'Guardando...' : 'Completar diagnóstico'}
-                  {!saving && <CheckCircle size={16} />}
-                </button>
-              )}
-            </div>
+          <div className="card p-6">
+            {paso === 'balance' && (
+              <PasoBalance empresa={empresa} onCompletado={() => { setPaso('encuesta'); setLoading(false) }} />
+            )}
+            {paso === 'encuesta' && (
+              <>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-brand-50 border border-brand-200 mb-5">
+                  <CheckCircle size={14} className="text-brand-500 flex-shrink-0" />
+                  <p className="text-sm text-brand-800 font-medium">¡Balance recibido! Tu asesor ya puede verlo.</p>
+                </div>
+                <PasoEncuesta empresa={empresa} onCompletado={() => setPaso('listo')} />
+              </>
+            )}
+            {paso === 'listo' && <Confirmacion />}
           </div>
 
-          {/* Indicador de paso */}
-          <p className="text-center text-xs text-slate-400 mt-4">
-            Paso {step} de {STEPS.length}
-          </p>
         </div>
       </div>
     </div>
