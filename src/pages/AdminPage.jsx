@@ -356,11 +356,11 @@ export default function AdminPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto" style={{ padding: '20px 24px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
 
           {/* ── KPIs principales (4 columnas) ──────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard label="Asesores activos"   value={metrics.asesores} sub="En el sistema"          to="/admin/asesores" />
             <KpiCard label="Empresas activas"   value={metrics.empresas} sub="En todas las etapas"    to="/admin/empresas" />
             <KpiCard label="Documentos subidos" value={metrics.docs}     sub="Total histórico" />
@@ -368,7 +368,7 @@ export default function AdminPage() {
           </div>
 
           {/* ── KPIs secundarios (3 columnas) ──────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <KpiCard
               label="Score SGR promedio"
               value={scorePromedio !== null ? `${scorePromedio}/100` : '—'}
@@ -387,7 +387,7 @@ export default function AdminPage() {
           </div>
 
           {/* ── Embudo + Alertas ────────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <EmbudoEtapas empresas={empresas} />
             <AlertasSistema alertas={alertas} />
           </div>

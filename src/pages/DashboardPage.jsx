@@ -46,7 +46,7 @@ function NxKpi({ label, value, context, colorKey = 'sky', isLast }) {
   const statusText = { green:'↑ Saludable', amber:'→ Moderado', red:'↓ Crítico', sky:'Disponible', topo:'—' }[colorKey] || '—'
 
   return (
-    <div className="px-4" style={{ borderRight: isLast ? 'none' : '1px solid var(--nx-line)' }}>
+    <div className="px-4 pb-4 md:pb-0 mb-4 md:mb-0" style={{ borderRight: isLast ? 'none' : '1px solid var(--nx-line)' }}>
       <div className="flex items-center gap-1.5 mb-1.5"
         style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--nx-topo)' }}>
         <div className="w-[5px] h-[5px] rounded-full flex-shrink-0" style={{ background: dotColor }} />
@@ -122,7 +122,8 @@ function BarraDiagnostico({ estado, empresaId, navigate }) {
       </p>
 
       {/* Steps */}
-      <div className="flex items-start mb-4">
+      <div className="overflow-x-auto pb-4 mb-2">
+        <div className="flex items-start min-w-[500px]">
         {STEPS.map((s, i) => {
           const st = stepState(s.n)
           const isLast = i === STEPS.length - 1
@@ -159,10 +160,11 @@ function BarraDiagnostico({ estado, empresaId, navigate }) {
             </div>
           )
         })}
+        </div>
       </div>
 
       {msg && (
-        <div className="flex items-center justify-between p-3"
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 sm:gap-0"
           style={{ background: 'var(--nx-indigo-bg)', border: '1px solid var(--nx-indigo-bd)',
             borderLeft: '3px solid var(--nx-indigo)', borderRadius: 2 }}>
           <p style={{ fontSize: 11, color: 'var(--nx-black)' }}>{msg.text}</p>
@@ -227,8 +229,9 @@ function RutaMercado({ score = 0, etapaActual = 1 }) {
     <NxSection titulo="Ruta al mercado de capitales" meta={score > 0 ? `Score: ${score}/100` : undefined}>
 
       {/* Barra de progreso */}
-      <div className="relative flex justify-between mb-5">
-        <div className="absolute top-3 left-3 right-3 h-px" style={{ background: 'var(--nx-light)' }} />
+      <div className="overflow-x-auto pb-4 mb-5">
+        <div className="relative flex justify-between min-w-[600px]">
+          <div className="absolute top-3 left-3 right-3 h-px" style={{ background: 'var(--nx-light)' }} />
         <div className="absolute top-3 left-3 h-px transition-all duration-500"
           style={{ width: `${Math.min(((etapaRuta - 1) / 4) * 100, 100)}%`, background: 'var(--nx-black)' }} />
         {RUTA_ETAPAS.map(etapa => {
@@ -256,6 +259,7 @@ function RutaMercado({ score = 0, etapaActual = 1 }) {
             </div>
           )
         })}
+        </div>
       </div>
 
       {/* Lista de etapas con descripción */}
@@ -394,7 +398,7 @@ function ScoreSGR({ sgr }) {
   return (
     <NxSection titulo="Scoring SGR" meta={cat}>
       {/* Número + barra */}
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
         <div className="font-serif font-semibold leading-none tracking-tight"
           style={{ fontSize: 64, color: 'var(--nx-black)' }}>
           {score}
@@ -417,7 +421,7 @@ function ScoreSGR({ sgr }) {
 
       {/* Cupos */}
       {cupos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {cupos.map(({ label, v, state }) => (
             <div key={label} className="p-2.5"
               style={{ background: STATE_BG[state], borderLeft: `2px solid ${STATE_BD[state]}` }}>
@@ -537,10 +541,10 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--nx-off)', fontFamily: 'Montserrat, sans-serif' }}>
-      <div style={{ padding: 28, maxWidth: 1100, margin: '0 auto' }}>
+      <div className="p-4 md:p-7 mx-auto" style={{ maxWidth: 1100 }}>
 
         {/* ── PASO 3: Page Header ── */}
-        <div className="flex items-end justify-between mb-5 pb-5 -mx-7 px-7"
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-5 pb-5 -mx-4 px-4 md:-mx-7 md:px-7 gap-3 md:gap-0"
           style={{ borderBottom: '2px solid var(--nx-black)',
             background: 'linear-gradient(to right, var(--nx-indigo-bg), transparent)' }}>
           <div>
@@ -570,7 +574,7 @@ export default function DashboardPage() {
 
               {/* Paso 1 — Balance */}
               {balOk ? (
-                <div className="flex items-center justify-between p-3"
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 sm:gap-0"
                   style={{ background: 'var(--nx-green-bg)', border: '1px solid var(--nx-green-bd)',
                     borderLeft: '3px solid var(--nx-green)', borderRadius: 2 }}>
                   <div className="flex items-center gap-2">
@@ -589,7 +593,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center justify-between p-3"
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 sm:gap-0"
                   style={{ background: 'var(--nx-indigo-bg)', border: '1px solid var(--nx-indigo-bd)',
                     borderLeft: '3px solid var(--nx-indigo)', borderRadius: 2 }}>
                   <p style={{ fontSize: 11, color: 'var(--nx-black)' }}>
@@ -609,7 +613,7 @@ export default function DashboardPage() {
               {/* Paso 2 — Encuesta (aparece solo si el balance ya fue subido) */}
               {balOk && (
                 encOk ? (
-                  <div className="flex items-center justify-between p-3"
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 sm:gap-0"
                     style={{ background: 'var(--nx-green-bg)', border: '1px solid var(--nx-green-bd)',
                       borderLeft: '3px solid var(--nx-green)', borderRadius: 2 }}>
                     <div className="flex items-center gap-2">
@@ -628,7 +632,7 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-3"
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 gap-3 sm:gap-0"
                     style={{ background: 'var(--nx-indigo-bg)', border: '1px solid var(--nx-indigo-bd)',
                       borderLeft: '3px solid var(--nx-indigo)', borderRadius: 2 }}>
                     <p style={{ fontSize: 11, color: 'var(--nx-black)' }}>
@@ -657,7 +661,7 @@ export default function DashboardPage() {
         {ultimo && (
           <div className="mb-5">
             <NxSection titulo="Indicadores financieros" meta={ultimo.periodo}>
-              <div className="grid grid-cols-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-y-4 md:gap-y-0">
                 <NxKpi label="Ventas netas" value={ars(ultimo.ventas_netas)} context={`Período ${ultimo.periodo}`} colorKey="sky" />
                 <NxKpi label="Margen EBITDA" value={pct(ratios?.margen_ebitda)} context="Sobre ventas netas" colorKey={kpiEbColor} />
                 <NxKpi label="Liquidez corriente" value={ratio(ratios?.liquidez_corriente)} context="Activo / pasivo cte." colorKey={kpiLiqColor} />
@@ -669,11 +673,11 @@ export default function DashboardPage() {
 
         {/* ── Gráfico + Semáforo ── */}
         {ultimo && (
-          <div className="grid grid-cols-5 gap-5 mb-5">
-            <div className="col-span-3">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
+            <div className="lg:col-span-3">
               <PanelMercado />
             </div>
-            <div className="col-span-2">
+            <div className="lg:col-span-2">
               {semaforoAreas.length > 0
                 ? <SemaforoNexxo areas={semaforoAreas} />
                 : (
@@ -723,7 +727,7 @@ export default function DashboardPage() {
 
         {/* ── Accesos rápidos ── */}
         <NxSection titulo="Accesos rápidos">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <AccesoRapido to="/mi-perfil"  icon={FileText}       label="Mi perfil financiero" />
             <AccesoRapido to="/mi-informe" icon={TrendingUp}     label="Mi informe" />
             <AccesoRapido to="/mensajes"   icon={MessageCircle}  label="Mensajes con mi asesor" badge={mensajes} />

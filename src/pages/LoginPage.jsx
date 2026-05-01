@@ -58,7 +58,7 @@ export default function LoginPage() {
         </div>
 
         {/* ── Card del formulario ── */}
-        <div className="bg-white shadow-sm border border-[#EDEDED] rounded-sm px-8 pt-8 pb-7">
+        <div className="bg-white shadow-sm border border-[#EDEDED] rounded-sm px-6 sm:px-8 pt-6 sm:pt-8 pb-7">
 
           <h1 className="text-2xl font-light text-[#111417] mb-1"
               style={{ fontFamily: 'Georgia, serif' }}>

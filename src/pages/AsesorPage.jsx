@@ -765,7 +765,7 @@ export default function AsesorPage() {
           {/* ── Tabla de empresas ───────────────────────────────── */}
           <div className="bg-nexxo-white shadow-nexxo-sm border border-nexxo-topoXl">
             {/* Filtros */}
-            <div className="px-5 py-3.5 border-b border-nexxo-light flex items-center gap-3 flex-wrap">
+            <div className="px-5 py-3.5 border-b border-nexxo-light flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-nexxo-topo flex-1">
                 Empresas asignadas
               </p>
@@ -776,14 +776,14 @@ export default function AsesorPage() {
                 onChange={e => setBusqueda(e.target.value)}
                 className="bg-nexxo-white border border-nexxo-light text-sm font-medium text-nexxo-black
                            px-3 py-1.5 rounded-sm outline-none focus:border-nexxo-topo focus:ring-1 focus:ring-nexxo-topo
-                           hover:border-nexxo-topo transition-colors w-48"
+                           hover:border-nexxo-topo transition-colors w-full sm:w-48"
               />
               <select
                 value={filtroEtapa}
                 onChange={e => setFiltroEtapa(e.target.value)}
                 className="bg-nexxo-white border border-nexxo-light text-sm font-medium text-nexxo-black
                            px-3 py-1.5 rounded-sm outline-none focus:border-nexxo-topo focus:ring-1 focus:ring-nexxo-topo
-                           hover:border-nexxo-topo transition-colors w-40"
+                           hover:border-nexxo-topo transition-colors w-full sm:w-40"
               >
                 <option value="todas">Todas las etapas</option>
                 {Object.entries(ETAPA_MAP).map(([v, { label }]) => (

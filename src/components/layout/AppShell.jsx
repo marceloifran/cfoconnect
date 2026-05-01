@@ -7,7 +7,7 @@ import {
   FileText, Building2, BellRing, LogOut, ChevronRight,
   BookOpen, ClipboardList, Brain, Compass,
   Users, FolderOpen, MessageCircle, ShieldCheck,
-  ChevronDown, CheckCircle, Activity,
+  ChevronDown, CheckCircle, Activity, Menu, X,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -159,7 +159,7 @@ function CompanySelector({ asesorId, empresaActiva, setEmpresaActiva }) {
               </span>
             </>
           ) : (
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-amber)' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--nx-amber)', whiteSpace: 'nowrap' }}>
               Seleccionar empresa
             </span>
           )}
@@ -279,7 +279,7 @@ const BREADCRUMB_MAP = {
   '/admin':         ['Administración'],
 }
 
-function Topbar({ empresa, etapa, showCompanySelector, asesorId, empresaActiva, setEmpresaActiva }) {
+function Topbar({ empresa, etapa, showCompanySelector, asesorId, empresaActiva, setEmpresaActiva, onMenuClick }) {
   const { pathname } = useLocation()
   const crumbs = BREADCRUMB_MAP[pathname] || [pathname.replace('/', '').replace(/-/g, ' ')]
   const fecha  = new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })
@@ -288,19 +288,26 @@ function Topbar({ empresa, etapa, showCompanySelector, asesorId, empresaActiva, 
   const etLabel = ETAPA_LABELS[etapa] || 'Onboarding'
 
   return (
-    <div className="flex items-center justify-between px-6 flex-shrink-0 bg-white"
+    <div className="flex items-center justify-between px-4 md:px-6 flex-shrink-0 bg-white overflow-x-auto no-scrollbar"
       style={{ height: 52, borderBottom: '1px solid var(--nx-line)' }}>
 
       {/* Izquierda: breadcrumb + separator + company selector */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+        <button className="md:hidden p-1 -ml-1 text-[var(--nx-black)]" onClick={onMenuClick}>
+          <Menu size={18} />
+        </button>
+
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 flex-shrink-0"
+        <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0"
           style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           <span style={{ color: 'var(--nx-topo-lt)' }}>NEXXO</span>
           <span style={{ color: 'var(--nx-topo-xl)' }}>›</span>
           {crumbs.map((c, i) => (
             <span key={i} style={{ color: i === crumbs.length - 1 ? 'var(--nx-black)' : 'var(--nx-topo-lt)' }}>{c}</span>
           ))}
+        </div>
+        <div className="sm:hidden flex items-center flex-shrink-0 font-bold uppercase tracking-wider text-[10px]">
+          {crumbs[crumbs.length - 1]}
         </div>
 
         {/* Separator + Company selector (solo asesor) */}
@@ -318,7 +325,7 @@ function Topbar({ empresa, etapa, showCompanySelector, asesorId, empresaActiva, 
 
       {/* Derecha: fecha + etapa badge */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="font-mono" style={{ fontSize: 9, color: 'var(--nx-topo)' }}>{fecha}</span>
+        <span className="hidden md:inline-block font-mono" style={{ fontSize: 9, color: 'var(--nx-topo)' }}>{fecha}</span>
         {etapa > 0 && (
           <span className="font-bold uppercase px-2.5 py-1"
             style={{ fontSize: 8, letterSpacing: '0.12em',
@@ -337,8 +344,11 @@ export default function AppShell() {
   const { profile, empresa, isAdmin, isAsesor, isImpersonating, stopImpersonating, signOut, empresaActiva, setEmpresaActiva } = useAuth()
   const navigate = useNavigate()
   const [unreadMsgs, setUnreadMsgs] = useState(0)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { pathname } = useLocation()
 
   useEffect(() => { document.title = 'NEXXO CAPITAL' }, [])
+  useEffect(() => { setIsMobileMenuOpen(false) }, [pathname])
 
   useEffect(() => {
     const empId = empresa?.id
@@ -366,8 +376,20 @@ export default function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--nx-off)' }}>
 
+      {/* Overlay oscuro móvil */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden transition-opacity"
+          style={{ background: 'rgba(17, 20, 23, 0.4)', backdropFilter: 'blur(2px)' }}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar NEXXO ── */}
-      <aside className="w-[210px] bg-white flex flex-col flex-shrink-0 relative"
+      <aside className={clsx(
+        "w-[210px] bg-white flex flex-col flex-shrink-0 fixed md:relative z-50 h-full transition-transform duration-300 shadow-2xl md:shadow-none",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}
         style={{ borderRight: '1px solid var(--nx-line)' }}>
 
         {/* Acento izquierdo degradado */}
@@ -464,18 +486,17 @@ export default function AppShell() {
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar — clientes, asesor (con company selector) e impersonando */}
-        {(!isAdmin || isImpersonating) && (
-          <Topbar
-            empresa={empresa}
-            etapa={empresa?.etapa_numero || 1}
-            showCompanySelector={isAsesor && !isImpersonating}
-            asesorId={profile?.id}
-            empresaActiva={empresaActiva}
-            setEmpresaActiva={setEmpresaActiva}
-          />
-        )}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Topbar siempre visible para el menú móvil */}
+        <Topbar
+          empresa={empresa}
+          etapa={isAdmin && !isImpersonating ? 0 : (empresa?.etapa_numero || 1)}
+          showCompanySelector={isAsesor && !isImpersonating}
+          asesorId={profile?.id}
+          empresaActiva={empresaActiva}
+          setEmpresaActiva={setEmpresaActiva}
+          onMenuClick={() => setIsMobileMenuOpen(true)}
+        />
 
         <main className="flex-1 overflow-hidden flex flex-col">
           <Outlet />

@@ -5,7 +5,7 @@ export default function PageHeader({ title, subtitle, actions }) {
   const showEmpresa = isAsesor && !isImpersonating && empresaActiva
 
   return (
-    <div className="h-14 flex items-center justify-between px-6 bg-white border-b border-slate-200 flex-shrink-0">
+    <div className="min-h-[56px] flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-4 md:px-6 gap-3 sm:gap-0 bg-white border-b border-slate-200 flex-shrink-0">
       <div>
         <h1 className="text-base font-semibold text-navy-800">{title}</h1>
         {showEmpresa ? (
