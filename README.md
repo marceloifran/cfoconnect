@@ -1,167 +1,75 @@
-# CFOConnect — Guía de instalación y desarrollo
+# CFOConnect — Plataforma de Asesoría Financiera Inteligente
 
-## Qué es esto
-Plataforma web para asesoría financiera a PyMEs. El asesor gestiona todas las empresas desde un panel central. Cada empresa tiene su propio portal con diagnóstico financiero, módulo CFO, mercado de capitales y reportes.
+CFOConnect es una plataforma B2B diseñada para digitalizar y escalar el servicio de asesoramiento financiero para PyMEs. El sistema centraliza la gestión de múltiples clientes, automatiza cálculos de rentabilidad y liquidez, y utiliza Inteligencia Artificial para redactar reportes ejecutivos de manera automatizada.
 
----
-
-## Setup inicial — 30 minutos
-
-### Paso 1 — Instalá Node.js
-Si no lo tenés: https://nodejs.org → descargá la versión LTS (la verde) e instalá.
-
-Para verificar que funciona, abrí la terminal y escribí:
-```
-node --version
-```
-Debe mostrar algo como `v20.x.x`
+El sistema está diseñado bajo un enfoque **100% Mobile-First**, permitiendo a los usuarios (tanto asesores como directores de empresas) operar completamente desde sus dispositivos móviles con interfaces basadas en tarjetas (*Cards*), eliminando la necesidad de visualizar complejas y extensas planillas de cálculo.
 
 ---
 
-### Paso 2 — Creá tu proyecto en Supabase
+## 👥 Arquitectura de Roles
 
-1. Entrá a https://supabase.com y creá una cuenta gratis
-2. Hacé clic en **New project**
-3. Nombre: `cfoconnect`, región: South America (São Paulo)
-4. Guardá la contraseña de la base de datos (la vas a necesitar)
-5. Esperá 2 minutos a que el proyecto se cree
+El sistema cuenta con un control de acceso basado en roles (RBAC) que define estrictamente lo que cada usuario puede ver y hacer:
 
----
+1. **Administrador (`admin`)**
+   - Tiene el control total de la plataforma.
+   - Crea nuevas empresas, gestiona los accesos y contraseñas.
+   - Administra el equipo de asesores (`alta/baja/modificación`).
+   - Define qué empresa es atendida por qué asesor (matriz de asignaciones).
+   - Actualiza de forma global los **Indicadores de Mercado Macro** (Dólar, Tasas, Financiamiento) que todos los clientes consumen en sus portales.
 
-### Paso 3 — Creá la base de datos
+2. **Asesor Financiero (`asesor`)**
+   - Es el operador principal del sistema.
+   - Visualiza únicamente las empresas que el administrador le ha asignado.
+   - Actúa como el "CFO Virtual" de sus clientes: carga presupuestos, actualiza el flujo de caja, y aprueba/audita el estado de los diagnósticos.
+   - Genera los reportes ejecutivos impulsados por Inteligencia Artificial para enviarlos a los directores de las PyMEs.
 
-1. En tu proyecto de Supabase, andá a **SQL Editor** → **New query**
-2. Copiá TODO el contenido del archivo `supabase-schema.sql`
-3. Pegalo en el editor y hacé clic en **Run**
-4. Deberías ver "Success" en verde
-
----
-
-### Paso 4 — Creá los usuarios de prueba
-
-En Supabase → **Authentication** → **Users** → **Add user**:
-
-**Usuario asesor:**
-- Email: `asesor@tuempresa.com`
-- Password: `asesor123`
-- En "User metadata" (JSON): `{"nombre": "Tu nombre", "rol": "asesor"}`
-
-**Usuario cliente (Molinos del NOA):**
-- Email: `molinos@cfoconnect.com`
-- Password: `molinos123`
-- En "User metadata": `{"nombre": "Molinos del NOA", "rol": "cliente"}`
-
-Después de crear cada usuario, vinculalo a su empresa:
-```sql
--- Ejecutar en SQL Editor (reemplazá el UUID con el real del usuario)
-update usuarios
-set empresa_id = 'a1b2c3d4-0000-0000-0000-000000000001'
-where id = 'UUID_DEL_USUARIO_MOLINOS';
-```
+3. **Cliente / Empresa (`cliente`)**
+   - Es el usuario final (ej: el Director o Dueño de la PyME).
+   - Solo tiene acceso a los datos de su propia empresa (garantizado por políticas de Row Level Security en la base de datos).
+   - Visualiza dashboards de alto nivel con KPIs, métricas de ventas y semáforos de riesgo.
+   - Interactúa con el módulo de diagnóstico para conocer el estado de salud financiera de su empresa y descubre oportunidades de financiamiento en el mercado de capitales.
 
 ---
 
-### Paso 5 — Configurá las variables de entorno
+## 🧩 Módulos Funcionales
 
-1. En Supabase → **Settings** → **API**
-2. Copiá la **URL** y la **anon public key**
-3. En la carpeta del proyecto, creá el archivo `.env.local`:
+### 1. Dashboard de Control (Tablero de Comando)
+Ofrece una radiografía instantánea del estado de la empresa mediante:
+- **KPIs Financieros**: Rentabilidad, liquidez, nivel de endeudamiento.
+- **Gráficos Históricos**: Evolución de ventas y costos.
+- **Semáforo de Riesgo**: Sistema de alertas automáticas (Rojo/Ámbar/Verde) basado en reglas de negocio duras (ej: si Liquidez Corriente < 1.0, estado Rojo).
 
-```
-VITE_SUPABASE_URL=https://tuproyecto.supabase.co
-VITE_SUPABASE_ANON_KEY=tu_anon_key_aqui
-```
+### 2. Módulo de Diagnóstico y Scoring (Score SGR)
+Un sistema de evaluación estructurado donde el cliente responde preguntas clave sobre su nivel de profesionalización, gestión contable y situación patrimonial. 
+- El sistema pondera las respuestas y emite un puntaje de **0 a 100 (Score SGR)**.
+- Dependiendo del score, clasifica a la empresa en etapas (Inicial, En Desarrollo, Optimizada) habilitándola para distintas líneas de crédito.
 
----
+### 3. CFO Virtual (Presupuesto y Cash Flow)
+El núcleo operativo de la asesoría financiera.
+- **Presupuesto Anual (12 Meses)**: Carga y seguimiento de ventas, costos de mercadería y gastos fijos para determinar el EBITDA estimado. Compara valores presupuestados vs reales con cálculo automático de desvíos.
+- **Cash Flow a 13 Semanas**: Proyección de liquidez de muy corto plazo. Cruza cobros esperados con pagos previstos para alertar sobre faltantes de caja. Emite "Recomendaciones automáticas" basadas en la magnitud del déficit (ej: Descontar cheques, Caución bursátil, etc.).
+- **Reporte Ejecutivo con IA**: Utiliza el motor de **Claude (Anthropic)** para procesar toda la matriz financiera y el Cash Flow, redactando automáticamente un reporte profesional de situación, riesgos y compromisos.
 
-### Paso 6 — Instalá las dependencias y levantá el proyecto
-
-Abrí la terminal en la carpeta `cfoconnect` y ejecutá:
-
-```bash
-npm install
-npm run dev
-```
-
-Abrí el navegador en: http://localhost:5173
-
----
-
-## Estructura del proyecto
-
-```
-cfoconnect/
-├── src/
-│   ├── components/
-│   │   ├── layout/
-│   │   │   └── AppShell.jsx        # Sidebar + layout principal
-│   │   └── shared/
-│   │       ├── PageHeader.jsx      # Header de cada página
-│   │       ├── MetricCard.jsx      # Cards de KPIs
-│   │       └── Semaforo.jsx        # Componente semáforo
-│   ├── hooks/
-│   │   └── useAuth.jsx             # Context de autenticación
-│   ├── lib/
-│   │   ├── supabase.js             # Cliente de Supabase
-│   │   └── financials.js           # Todos los cálculos financieros
-│   ├── pages/
-│   │   ├── LoginPage.jsx           # Pantalla de login
-│   │   ├── DashboardPage.jsx       # Dashboard del cliente
-│   │   └── AsesorPage.jsx          # Panel del asesor
-│   ├── styles/
-│   │   └── globals.css             # Tokens de diseño + utilidades
-│   ├── router.jsx                  # Rutas + guards por rol
-│   └── main.jsx                    # Entry point
-├── supabase-schema.sql             # Base de datos completa
-├── .env.example                    # Template de variables de entorno
-├── package.json
-├── tailwind.config.js
-└── vite.config.js
-```
+### 4. Mercado de Capitales
+Un espacio donde la empresa visualiza:
+- Su elegibilidad técnica para emitir instrumentos financieros (Pagarés bursátiles, Cheques de pago diferido).
+- Los indicadores macroeconómicos actualizados por la administración (Tasa BADLAR, Dólar MEP, etc.) para tomar decisiones de cobertura de capital.
 
 ---
 
-## Lo que funciona en esta versión (Fase 1)
+## 🗄️ Modelo y Estructura de Base de Datos
 
-- Login con Supabase Auth
-- Redirección automática por rol (asesor / cliente)
-- Panel del asesor con lista de empresas y alertas
-- Dashboard del cliente con KPIs, gráfico de ventas y semáforo financiero
-- Cálculo automático de todos los ratios financieros
-- Row Level Security: cada empresa ve solo sus datos
-- Diseño responsive, dark mode ready
+El backend está soportado por **Supabase (PostgreSQL)**. La estructura relacional garantiza la integridad de los datos financieros:
 
-## Próximos módulos (Fase 2)
+- `usuarios`: Tabla extendida de autenticación. Contiene el nombre, el `rol` (admin, asesor, cliente), el estado de actividad (`activo`) y una clave foránea `empresa_id` (solo aplicable a clientes).
+- `empresas`: Entidad principal del negocio. Almacena la razón social, CUIT, rubro, etapa de profesionalización y metadatos operativos.
+- `asignaciones`: Tabla pivot (relación Muchos a Muchos) que vincula `usuarios (asesores)` con `empresas`. Permite que un asesor gestione `N` empresas, y que una empresa sea auditada por `N` asesores si fuese necesario.
+- `diagnosticos`: Almacena el histórico de las evaluaciones de la empresa, guardando el payload JSON de respuestas y el puntaje SGR obtenido.
+- `periodos_financieros`: El corazón contable. Guarda los datos sumarizados por período mensual (`periodo`, ej: "2025-01" o "2025-presupuesto-01") vinculados a una `empresa_id`. Almacena ventas netas, costos, gastos comerciales y de personal.
+- `proyeccion_caja`: Guarda el flujo de caja semanal. Vincula `empresa_id`, un `periodo_base` (ej: "2025-S1"), número de semana, cobros y pagos esperados.
+- `indicadores_mercado`: Tabla global (no atada a empresas) donde la administración mantiene actualizadas las variables macro (Tasa, Dólar, Inflación) mediante `key-value` estructurado.
 
-- Módulo Diagnóstico: formulario guiado de 4 pasos con guardado automático
-- Módulo CFO: carga de datos mensuales + proyección de caja
-- Módulo Mercado de Capitales: checklist de elegibilidad + productos
-- Sistema de reportes con generación PDF
-- Notificaciones por email (Resend)
-
----
-
-## Deploy en Vercel (cuando estés listo)
-
-```bash
-npm install -g vercel
-vercel
-```
-
-Seguí las instrucciones. Vercel detecta Vite automáticamente.
-Agregá las variables de entorno en Vercel → tu proyecto → Settings → Environment Variables.
-
----
-
-## Preguntas frecuentes
-
-**¿Puedo agregar más empresas?**
-Sí, directamente desde el SQL Editor de Supabase o desde el panel del asesor (botón "Nueva empresa", a implementar en Fase 2).
-
-**¿Cómo cambio los colores o el nombre del producto?**
-- Colores: `tailwind.config.js` → sección `colors`
-- Nombre: buscá "CFOConnect" en los archivos JSX
-- Logo: reemplazá el icono en `AppShell.jsx` y `LoginPage.jsx`
-
-**¿Funciona en el celular?**
-Sí, la app es responsive. El sidebar se adapta en pantallas pequeñas (a implementar en Fase 2 con un menú hamburguesa).
+### Seguridad (RLS - Row Level Security)
+Toda la lógica de acceso a la base de datos está protegida a nivel de fila (RLS). 
+- Un asesor solo puede leer/modificar `periodos_financieros` de las empresas a las que está explícitamente vinculado en la tabla de `asignaciones`.
+- Un cliente solo puede consultar la fila de la tabla `empresas` cuyo ID coincide con el `empresa_id` de su propio usuario, haciendo imposible que se filtren datos de rentabilidad entre competidores dentro del sistema.
