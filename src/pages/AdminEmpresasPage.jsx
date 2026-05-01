@@ -182,63 +182,122 @@ export default function AdminEmpresasPage() {
       <div className="flex-1 overflow-y-auto p-6 animate-slide-up">
         <div className="card">
           {loading ? <p className="text-sm text-slate-400 text-center py-8">Cargando...</p> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    {['Empresa','CUIT','Rubro','Asesor','Etapa','Alta','Acciones'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {empresas.map(e => {
-                    const clienteExiste = (e.clientes || []).some(c => c.rol === 'cliente')
-                    return (
-                    <tr key={e.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-navy-800">{e.nombre}</p>
-                        {!clienteExiste && (
-                          <span className="text-xs text-amber-600 font-medium">⚠ Sin cuenta cliente</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs">{e.cuit || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500">{e.rubro || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500">{e.asesor?.nombre || <span className="text-red-400">Sin asignar</span>}</td>
-                      <td className="px-4 py-3"><span className="badge-gray">{ETAPA_L[e.etapa_numero] || '—'}</span></td>
-                      <td className="px-4 py-3 text-xs text-slate-400">{new Date(e.created_at).toLocaleDateString('es-AR')}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => abrirEditar(e)} title="Editar" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded">
-                            <Edit2 size={13} />
-                          </button>
-                          <button onClick={() => { setSel(e); setAsesorSel(e.asesor_id||''); setError(null); setModal('asesor') }} title="Asignar asesor"
-                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
-                            <UserCog size={13} />
-                          </button>
-                          {!clienteExiste ? (
-                            <button onClick={() => { setSel(e); setUsrForm({ email:'', password:'' }); setCredenciales(null); setError(null); setModal('crear_cuenta') }}
-                              title="Crear cuenta portal cliente"
-                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded">
-                              <UserPlus size={13} />
-                            </button>
-                          ) : (
-                            <button onClick={() => { setSel(e); setUsrForm({ password:'' }); setError(null); setModal('password') }} title="Cambiar contraseña"
-                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded">
-                              <KeyRound size={13} />
-                            </button>
-                          )}
-                          <button onClick={() => handleVerPortal(e)} title="Ver portal" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-navy-600 hover:bg-navy-50 rounded">
-                            <ExternalLink size={13} />
-                          </button>
-                        </div>
-                      </td>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      {['Empresa','CUIT','Rubro','Asesor','Etapa','Alta','Acciones'].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">{h}</th>
+                      ))}
                     </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {empresas.map(e => {
+                      const clienteExiste = (e.clientes || []).some(c => c.rol === 'cliente')
+                      return (
+                      <tr key={e.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-navy-800">{e.nombre}</p>
+                          {!clienteExiste && (
+                            <span className="text-xs text-amber-600 font-medium">⚠ Sin cuenta cliente</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">{e.cuit || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500">{e.rubro || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500">{e.asesor?.nombre || <span className="text-red-400">Sin asignar</span>}</td>
+                        <td className="px-4 py-3"><span className="badge-gray">{ETAPA_L[e.etapa_numero] || '—'}</span></td>
+                        <td className="px-4 py-3 text-xs text-slate-400">{new Date(e.created_at).toLocaleDateString('es-AR')}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => abrirEditar(e)} title="Editar" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded">
+                              <Edit2 size={13} />
+                            </button>
+                            <button onClick={() => { setSel(e); setAsesorSel(e.asesor_id||''); setError(null); setModal('asesor') }} title="Asignar asesor"
+                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
+                              <UserCog size={13} />
+                            </button>
+                            {!clienteExiste ? (
+                              <button onClick={() => { setSel(e); setUsrForm({ email:'', password:'' }); setCredenciales(null); setError(null); setModal('crear_cuenta') }}
+                                title="Crear cuenta portal cliente"
+                                className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded">
+                                <UserPlus size={13} />
+                              </button>
+                            ) : (
+                              <button onClick={() => { setSel(e); setUsrForm({ password:'' }); setError(null); setModal('password') }} title="Cambiar contraseña"
+                                className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded">
+                                <KeyRound size={13} />
+                              </button>
+                            )}
+                            <button onClick={() => handleVerPortal(e)} title="Ver portal" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-navy-600 hover:bg-navy-50 rounded">
+                              <ExternalLink size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Mobile Cards */}
+              <div className="md:hidden flex flex-col divide-y divide-slate-100">
+                {empresas.map(e => {
+                  const clienteExiste = (e.clientes || []).some(c => c.rol === 'cliente')
+                  return (
+                    <div key={e.id} className="p-4 flex flex-col gap-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <p className="font-semibold text-navy-800">{e.nombre}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{e.cuit || 'Sin CUIT'} · {e.rubro || 'Sin rubro'}</p>
+                        </div>
+                        <span className="badge-gray flex-shrink-0">{ETAPA_L[e.etapa_numero] || '—'}</span>
+                      </div>
+                      
+                      {!clienteExiste && (
+                        <div className="bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-amber-200 w-fit">
+                          ⚠ Sin cuenta cliente
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-xs mt-1">
+                        <div>
+                          <span className="text-slate-400 block mb-0.5 uppercase tracking-wide text-[10px]">Asesor</span>
+                          <span className="font-medium text-navy-800">{e.asesor?.nombre || <span className="text-red-400">Sin asignar</span>}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-slate-400 block mb-0.5 uppercase tracking-wide text-[10px]">Alta</span>
+                          <span className="text-slate-600">{new Date(e.created_at).toLocaleDateString('es-AR')}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1 pt-3 border-t border-slate-100">
+                        <button onClick={() => abrirEditar(e)} className="flex-1 py-2 flex justify-center text-slate-500 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => { setSel(e); setAsesorSel(e.asesor_id||''); setError(null); setModal('asesor') }} className="flex-1 py-2 flex justify-center text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200">
+                          <UserCog size={14} />
+                        </button>
+                        {!clienteExiste ? (
+                          <button onClick={() => { setSel(e); setUsrForm({ email:'', password:'' }); setCredenciales(null); setError(null); setModal('crear_cuenta') }} className="flex-1 py-2 flex justify-center text-brand-600 bg-brand-50 hover:bg-brand-100 rounded border border-brand-200">
+                            <UserPlus size={14} />
+                          </button>
+                        ) : (
+                          <button onClick={() => { setSel(e); setUsrForm({ password:'' }); setError(null); setModal('password') }} className="flex-1 py-2 flex justify-center text-amber-600 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200">
+                            <KeyRound size={14} />
+                          </button>
+                        )}
+                        <button onClick={() => handleVerPortal(e)} className="flex-1 py-2 flex justify-center text-navy-600 bg-navy-50 hover:bg-navy-100 rounded border border-navy-200">
+                          <ExternalLink size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>

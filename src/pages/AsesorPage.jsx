@@ -126,6 +126,72 @@ function EmpresaRow({ empresa, onAcceder, onRecargar, onVerInfo, idx }) {
   )
 }
 
+// ── Tarjeta de empresa (Móvil) ──────────────────────────────────────
+function EmpresaCard({ empresa, onAcceder, onRecargar, onVerInfo }) {
+  const score = empresa.scoring_sgr?.[0]?.score_total
+  const est   = getEstadoDiag(empresa)
+  const tieneDoc = empresa._tieneBalance || empresa._tieneEncuesta
+    || empresa.balance_subido_por_cliente || empresa.encuesta_completada
+
+  return (
+    <div className="bg-white p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-start gap-2">
+        <div>
+          <p className="text-sm font-semibold text-nexxo-black">{empresa.nombre}</p>
+          <p className="text-[10px] text-nexxo-gray mt-0.5">{empresa.cuit || 'Sin CUIT'} · {empresa.rubro || 'Sin rubro'}</p>
+        </div>
+        <NxBadgeEstado label={est.label} />
+      </div>
+
+      <div className="flex items-center gap-3 bg-nexxo-off p-2 rounded border border-nexxo-light">
+        <div className="flex-1">
+          <span className="text-[9px] uppercase tracking-wider text-nexxo-topo font-bold block mb-0.5">Docs</span>
+          <div className="flex items-center gap-2">
+            {(empresa._tieneBalance || empresa.balance_subido_por_cliente) ? (
+              <span className="text-[10px] text-green-700 font-medium flex items-center gap-1"><FileUp size={10} /> Bal</span>
+            ) : <span className="text-[10px] text-nexxo-topo">No</span>}
+            {(empresa._tieneEncuesta || empresa.encuesta_completada) ? (
+              <span className="text-[10px] text-green-700 font-medium flex items-center gap-1"><ClipboardCheck size={10} /> Enc</span>
+            ) : <span className="text-[10px] text-nexxo-topo">No</span>}
+          </div>
+        </div>
+        <div className="w-px h-8 bg-nexxo-line" />
+        <div className="flex-1">
+          <span className="text-[9px] uppercase tracking-wider text-nexxo-topo font-bold block mb-0.5">Score</span>
+          {score > 0 ? (
+            <span className={`font-mono text-xs font-bold ${score >= 65 ? 'text-green-700' : score >= 50 ? 'text-amber-700' : 'text-red-600'}`}>
+              {score}/100
+            </span>
+          ) : <span className="text-[10px] text-nexxo-topoLt">—</span>}
+        </div>
+        <div className="w-px h-8 bg-nexxo-line" />
+        <div className="flex-1">
+          <span className="text-[9px] uppercase tracking-wider text-nexxo-topo font-bold block mb-0.5">Plan</span>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-nexxo-gray truncate max-w-[80px] inline-block">
+            {empresa.plan_servicio ? empresa.plan_servicio.replace(/_/g, ' ') : '—'}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <div className="flex items-center gap-2 flex-1">
+          {tieneDoc && (
+            <button onClick={() => onVerInfo(empresa)}
+              className="flex-1 py-1.5 px-2 flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider
+                         text-amber-700 border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors rounded-sm">
+              <Eye size={11} /> Docs
+            </button>
+          )}
+          <button onClick={() => onAcceder(empresa)} className="btn-secondary flex-1 py-1.5 px-0 flex justify-center items-center gap-1 text-[10px]">
+            <ExternalLink size={11} /> Acceder
+          </button>
+        </div>
+        <MenuEstado empresa={empresa} onActualizar={onRecargar} />
+      </div>
+    </div>
+  )
+}
+
 // ── Modal info del cliente ──────────────────────────────────────────
 function InfoClienteModal({ empresa, onCerrar }) {
   const [urlBalance, setUrlBalance] = useState(null)
@@ -803,26 +869,39 @@ export default function AsesorPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-nexxo-black">
-                      {['Empresa', 'Estado cliente', 'Score SGR', 'Plan', ''].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-nexxo-topo">{h}</th>
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-nexxo-black">
+                        {['Empresa', 'Estado cliente', 'Score SGR', 'Plan', ''].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-nexxo-topo">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {empresasFiltradas.map((e, idx) => (
+                        <EmpresaRow key={e.id} empresa={e} idx={idx}
+                          onAcceder={handleAcceder}
+                          onRecargar={cargar}
+                          onVerInfo={e => setModalInfoEmpresa(e)}
+                        />
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {empresasFiltradas.map((e, idx) => (
-                      <EmpresaRow key={e.id} empresa={e} idx={idx}
-                        onAcceder={handleAcceder}
-                        onRecargar={cargar}
-                        onVerInfo={e => setModalInfoEmpresa(e)}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Mobile Cards */}
+                <div className="md:hidden flex flex-col divide-y divide-nexxo-light">
+                  {empresasFiltradas.map(e => (
+                    <EmpresaCard key={e.id} empresa={e}
+                      onAcceder={handleAcceder}
+                      onRecargar={cargar}
+                      onVerInfo={e => setModalInfoEmpresa(e)}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

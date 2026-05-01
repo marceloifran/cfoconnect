@@ -156,8 +156,8 @@ function PresupuestoAsesor({ empresaId }) {
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
+      {/* Desktop Table */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200">
         <table className="text-xs min-w-full">
           <thead>
             <tr className="bg-navy-800 text-white">
@@ -206,6 +206,47 @@ function PresupuestoAsesor({ empresaId }) {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-4">
+        {MESES.map((m, mIdx) => {
+          const mesCalc = calculados[mIdx]
+          return (
+            <div key={mIdx} className="card border border-slate-200 overflow-hidden">
+              <div className="bg-navy-800 text-white px-4 py-2.5 font-semibold flex justify-between items-center">
+                <span>{MESES_F[mIdx]}</span>
+              </div>
+              <div className="p-4 flex flex-col gap-3">
+                {FILAS.map(({ key, label, tipo }) => {
+                  const isCalc = tipo === 'calc'
+                  const isEBITDA = key === 'ebitda'
+                  const textCls = isEBITDA ? 'text-brand-800 font-bold' : isCalc ? 'text-navy-800 font-semibold' : 'text-slate-600'
+                  
+                  return (
+                    <div key={key} className="flex justify-between items-center border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                      <span className={`text-xs ${textCls}`}>{label}</span>
+                      {isCalc ? (
+                        <span className={`text-sm ${textCls}`}>{ars(mesCalc[key])}</span>
+                      ) : (
+                        <div className="relative w-32">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">$</span>
+                          <input
+                            type="number"
+                            value={form[mIdx][key]}
+                            onChange={e => setCell(mIdx, key, e.target.value)}
+                            className="w-full text-right pl-6 pr-2 py-1.5 border border-slate-200 focus:border-brand-400 rounded text-xs outline-none"
+                            placeholder="0"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -268,43 +309,82 @@ function PresupuestoCliente({ empresaId }) {
           <p className="text-sm text-amber-800">Todavía no hay presupuesto cargado para este período. Tu asesor lo va a completar pronto.</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-navy-800 text-white">
-                {['Concepto', 'Presupuestado', 'Real', 'Desvío $', 'Desvío %'].map(h => (
-                  <th key={h} className={`px-4 py-2.5 text-xs font-semibold ${h === 'Concepto' ? 'text-left' : 'text-right'}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {FILAS.map(({ key, label, tipo }) => {
-                const b = n(bVals[key])
-                const r = n(rVals[key])
-                const dev = r - b
-                const devPct = b !== 0 ? dev / Math.abs(b) : 0
-                const goodDevio = (dev > 0) === isRevenueRow(key)
-                const devCls = dev === 0 ? 'text-slate-400' : goodDevio ? 'text-brand-600' : 'text-red-600'
-                const isCalc = tipo === 'calc'
-                const rowCls = key === 'ebitda' ? 'bg-brand-50' : isCalc ? 'bg-slate-50' : ''
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block rounded-lg border border-slate-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-navy-800 text-white">
+                  {['Concepto', 'Presupuestado', 'Real', 'Desvío $', 'Desvío %'].map(h => (
+                    <th key={h} className={`px-4 py-2.5 text-xs font-semibold ${h === 'Concepto' ? 'text-left' : 'text-right'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {FILAS.map(({ key, label, tipo }) => {
+                  const b = n(bVals[key])
+                  const r = n(rVals[key])
+                  const dev = r - b
+                  const devPct = b !== 0 ? dev / Math.abs(b) : 0
+                  const goodDevio = (dev > 0) === isRevenueRow(key)
+                  const devCls = dev === 0 ? 'text-slate-400' : goodDevio ? 'text-brand-600' : 'text-red-600'
+                  const isCalc = tipo === 'calc'
+                  const rowCls = key === 'ebitda' ? 'bg-brand-50' : isCalc ? 'bg-slate-50' : ''
 
-                return (
-                  <tr key={key} className={`border-t border-slate-100 ${rowCls}`}>
-                    <td className={`px-4 py-2.5 ${isCalc ? 'font-semibold text-navy-800' : 'text-slate-700'}`}>{label}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-700 tabular-nums">{b ? ars(b) : '—'}</td>
-                    <td className="px-4 py-2.5 text-right font-medium text-navy-800 tabular-nums">{r ? ars(r) : '—'}</td>
-                    <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${devCls}`}>
-                      {dev !== 0 ? (dev > 0 ? '+' : '') + ars(dev) : '—'}
-                    </td>
-                    <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${devCls}`}>
-                      {dev !== 0 ? (devPct > 0 ? '+' : '') + pct(devPct) : '—'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={key} className={`border-t border-slate-100 ${rowCls}`}>
+                      <td className={`px-4 py-2.5 ${isCalc ? 'font-semibold text-navy-800' : 'text-slate-700'}`}>{label}</td>
+                      <td className="px-4 py-2.5 text-right text-slate-700 tabular-nums">{b ? ars(b) : '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-medium text-navy-800 tabular-nums">{r ? ars(r) : '—'}</td>
+                      <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${devCls}`}>
+                        {dev !== 0 ? (dev > 0 ? '+' : '') + ars(dev) : '—'}
+                      </td>
+                      <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${devCls}`}>
+                        {dev !== 0 ? (devPct > 0 ? '+' : '') + pct(devPct) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden flex flex-col gap-3">
+            {FILAS.map(({ key, label, tipo }) => {
+              const b = n(bVals[key])
+              const r = n(rVals[key])
+              const dev = r - b
+              const devPct = b !== 0 ? dev / Math.abs(b) : 0
+              const goodDevio = (dev > 0) === isRevenueRow(key)
+              const devCls = dev === 0 ? 'text-slate-400' : goodDevio ? 'text-brand-600' : 'text-red-600'
+              const isCalc = tipo === 'calc'
+              
+              return (
+                <div key={key} className={`card p-4 border border-slate-100 ${key === 'ebitda' ? 'bg-brand-50' : isCalc ? 'bg-slate-50' : 'bg-white'}`}>
+                  <div className={`font-semibold mb-3 ${isCalc ? 'text-navy-800' : 'text-slate-700'}`}>{label}</div>
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                    <div>
+                      <span className="block text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Presupuestado</span>
+                      <span className="text-slate-700 font-medium tabular-nums">{b ? ars(b) : '—'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-slate-400 uppercase tracking-wide mb-0.5">Real</span>
+                      <span className="text-navy-800 font-medium tabular-nums">{r ? ars(r) : '—'}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wide">Desvío</span>
+                    <div className="flex gap-3">
+                      <span className={`font-medium tabular-nums ${devCls}`}>{dev !== 0 ? (dev > 0 ? '+' : '') + ars(dev) : '—'}</span>
+                      <span className={`font-medium tabular-nums ${devCls}`}>{dev !== 0 ? (devPct > 0 ? '+' : '') + pct(devPct) : '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )
@@ -439,8 +519,8 @@ function CashFlowTab({ isAsesor, empresaId }) {
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="overflow-x-auto rounded-lg border border-slate-200 mb-5">
+      {/* Desktop Table */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 mb-5">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-navy-800 text-white">
@@ -481,6 +561,44 @@ function CashFlowTab({ isAsesor, empresaId }) {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-3 mb-5">
+        {withSaldos.map((s, i) => {
+          const col = alertaColor(s.saldo_proyectado)
+          return (
+            <div key={i} className="card p-4 border border-slate-100 bg-white shadow-sm">
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-semibold text-navy-800">Semana {s.semana}</span>
+                <input type="date" value={s.fecha_semana} onChange={e => setCell(i, 'fecha_semana', e.target.value)}
+                  className="border border-slate-200 focus:border-brand-400 rounded px-2 py-1 outline-none text-xs text-slate-600" />
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <span className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Cobros</span>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">$</span>
+                    <input type="number" value={s.cobros_esperados} onChange={e => setCell(i, 'cobros_esperados', e.target.value)}
+                      className="w-full text-right pl-6 pr-2 py-1.5 border border-slate-200 focus:border-brand-400 rounded outline-none text-xs" placeholder="0" />
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 uppercase tracking-wide mb-1">Pagos</span>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">$</span>
+                    <input type="number" value={s.pagos_previstos} onChange={e => setCell(i, 'pagos_previstos', e.target.value)}
+                      className="w-full text-right pl-6 pr-2 py-1.5 border border-slate-200 focus:border-brand-400 rounded outline-none text-xs" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                <span className="text-[10px] text-slate-500 uppercase tracking-wide">Saldo Proyectado</span>
+                <span className={`text-sm font-semibold tabular-nums ${SALDO_CLS[col]}`}>{ars(s.saldo_proyectado)}</span>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Recomendaciones automáticas */}

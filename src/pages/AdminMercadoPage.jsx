@@ -52,40 +52,88 @@ function FilaIndicador({ ind, profileId, onSaved }) {
   const inputStyle = { fontSize: 12, padding: '5px 8px', border: '1px solid var(--nx-light)', borderRadius: 3, background: 'white', outline: 'none', width: '100%' }
 
   return (
-    <tr style={{ borderBottom: '1px solid var(--nx-off)' }}>
-      <td style={{ padding: '8px 10px', fontSize: 12, color: 'var(--nx-gray)', whiteSpace: 'nowrap' }}>{ind.label}</td>
-      <td style={{ padding: '6px 6px' }}>
-        <input value={form.valor} onChange={e => campo('valor', e.target.value)} style={{ ...inputStyle, width: 120 }} placeholder="valor" />
-      </td>
-      <td style={{ padding: '6px 6px' }}>
-        <input value={form.unidad} onChange={e => campo('unidad', e.target.value)} style={{ ...inputStyle, width: 50 }} placeholder="$  %  pb" />
-      </td>
-      <td style={{ padding: '6px 6px' }}>
-        <input value={form.variacion} onChange={e => campo('variacion', e.target.value)} style={{ ...inputStyle, width: 70 }} placeholder="+1,2%" />
-      </td>
-      <td style={{ padding: '6px 6px' }}>
-        <select value={form.variacion_tipo} onChange={e => campo('variacion_tipo', e.target.value)}
-          style={{ ...inputStyle, width: 100, cursor: 'pointer' }}>
-          {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </td>
-      <td style={{ padding: '6px 6px', minWidth: 180 }}>
-        <input value={form.caption} onChange={e => campo('caption', e.target.value)} style={{ ...inputStyle, width: '100%' }} placeholder="Descripción breve..." />
-      </td>
-      <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
-        <button onClick={guardar} disabled={saving}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
-            background: ok ? 'var(--nx-green-bg)' : 'var(--nx-black)', color: ok ? 'var(--nx-green)' : 'white',
-            border: ok ? '1px solid var(--nx-green-bd)' : 'none', borderRadius: 3, opacity: saving ? 0.6 : 1,
-          }}>
-          {saving ? <RefreshCw size={11} className="animate-spin" /> : ok ? <CheckCircle size={11} /> : <Save size={11} />}
-          {saving ? 'Guardando' : ok ? 'Guardado' : 'Guardar'}
-        </button>
-        {err && <p style={{ fontSize: 10, color: 'var(--nx-red)', marginTop: 3 }}>{err}</p>}
-      </td>
-    </tr>
+    <>
+      <tr className="hidden md:table-row" style={{ borderBottom: '1px solid var(--nx-off)' }}>
+        <td style={{ padding: '8px 10px', fontSize: 12, color: 'var(--nx-gray)', whiteSpace: 'nowrap' }}>{ind.label}</td>
+        <td style={{ padding: '6px 6px' }}>
+          <input value={form.valor} onChange={e => campo('valor', e.target.value)} style={{ ...inputStyle, width: 120 }} placeholder="valor" />
+        </td>
+        <td style={{ padding: '6px 6px' }}>
+          <input value={form.unidad} onChange={e => campo('unidad', e.target.value)} style={{ ...inputStyle, width: 50 }} placeholder="$  %  pb" />
+        </td>
+        <td style={{ padding: '6px 6px' }}>
+          <input value={form.variacion} onChange={e => campo('variacion', e.target.value)} style={{ ...inputStyle, width: 70 }} placeholder="+1,2%" />
+        </td>
+        <td style={{ padding: '6px 6px' }}>
+          <select value={form.variacion_tipo} onChange={e => campo('variacion_tipo', e.target.value)}
+            style={{ ...inputStyle, width: 100, cursor: 'pointer' }}>
+            {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </td>
+        <td style={{ padding: '6px 6px', minWidth: 180 }}>
+          <input value={form.caption} onChange={e => campo('caption', e.target.value)} style={{ ...inputStyle, width: '100%' }} placeholder="Descripción breve..." />
+        </td>
+        <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+          <button onClick={guardar} disabled={saving}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+              background: ok ? 'var(--nx-green-bg)' : 'var(--nx-black)', color: ok ? 'var(--nx-green)' : 'white',
+              border: ok ? '1px solid var(--nx-green-bd)' : 'none', borderRadius: 3, opacity: saving ? 0.6 : 1,
+            }}>
+            {saving ? <RefreshCw size={11} className="animate-spin" /> : ok ? <CheckCircle size={11} /> : <Save size={11} />}
+            {saving ? 'Guardando' : ok ? 'Guardado' : 'Guardar'}
+          </button>
+          {err && <p style={{ fontSize: 10, color: 'var(--nx-red)', marginTop: 3 }}>{err}</p>}
+        </td>
+      </tr>
+
+      {/* Mobile Card */}
+      <tr className="md:hidden block border-b border-slate-100 p-4 bg-white">
+        <td className="block">
+          <div className="flex flex-col gap-3">
+            <div className="font-semibold text-sm text-navy-800">{ind.label}</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wide block mb-1">Valor</span>
+                <input value={form.valor} onChange={e => campo('valor', e.target.value)} style={{...inputStyle}} placeholder="valor" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wide block mb-1">Unidad</span>
+                <input value={form.unidad} onChange={e => campo('unidad', e.target.value)} style={{...inputStyle}} placeholder="$ % pb" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wide block mb-1">Variación</span>
+                <input value={form.variacion} onChange={e => campo('variacion', e.target.value)} style={{...inputStyle}} placeholder="+1,2%" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wide block mb-1">Tipo</span>
+                <select value={form.variacion_tipo} onChange={e => campo('variacion_tipo', e.target.value)} style={{...inputStyle, cursor: 'pointer'}}>
+                  {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase tracking-wide block mb-1">Caption</span>
+              <input value={form.caption} onChange={e => campo('caption', e.target.value)} style={{...inputStyle}} placeholder="Descripción breve..." />
+            </div>
+            <div className="flex justify-end mt-1 items-center gap-2">
+              {err && <p style={{ fontSize: 10, color: 'var(--nx-red)' }}>{err}</p>}
+              <button onClick={guardar} disabled={saving}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '7px 14px', fontSize: 11, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+                  background: ok ? 'var(--nx-green-bg)' : 'var(--nx-black)', color: ok ? 'var(--nx-green)' : 'white',
+                  border: ok ? '1px solid var(--nx-green-bd)' : 'none', borderRadius: 3, opacity: saving ? 0.6 : 1,
+                }}>
+                {saving ? <RefreshCw size={11} className="animate-spin" /> : ok ? <CheckCircle size={11} /> : <Save size={11} />}
+                {saving ? 'Guardando' : ok ? 'Guardado' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </>
   )
 }
 
@@ -148,7 +196,7 @@ export default function AdminMercadoPage() {
                 </p>
                 <div style={{ border: '1px solid var(--nx-line)', borderRadius: 3, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
+                    <thead className="hidden md:table-header-group">
                       <tr>
                         <th style={thStyle}>Indicador</th>
                         <th style={thStyle}>Valor</th>
@@ -159,7 +207,7 @@ export default function AdminMercadoPage() {
                         <th style={thStyle}></th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="block md:table-row-group">
                       {items.map(ind => (
                         <FilaIndicador key={ind.id} ind={ind} profileId={profile?.id} onSaved={cargar} />
                       ))}

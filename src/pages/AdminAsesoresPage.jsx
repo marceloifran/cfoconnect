@@ -127,50 +127,95 @@ export default function AdminAsesoresPage() {
           {loading ? (
             <p className="text-sm text-slate-400 text-center py-8">Cargando...</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    {['Nombre','Email','Empresas asignadas','Alta','Estado','Acciones'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {asesores.map(a => (
-                    <tr key={a.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-navy-800">{a.nombre || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500">{a.id}</td>
-                      <td className="px-4 py-3 text-center">{a.empresas?.length ?? 0}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{new Date(a.created_at).toLocaleDateString('es-AR')}</td>
-                      <td className="px-4 py-3">
-                        <span className={a.activo !== false ? 'badge-green' : 'badge-gray'}>
-                          {a.activo !== false ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => abrirEmpresas(a)} title="Ver empresas"
-                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors">
-                            <Eye size={14} />
-                          </button>
-                          <button onClick={() => { setSel(a); setForm({ password:'' }); setError(null); setOk(null); setModal('password') }} title="Cambiar contraseña"
-                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors">
-                            <KeyRound size={14} />
-                          </button>
-                          {a.activo !== false && (
-                            <button onClick={() => handleDesactivar(a)} title="Desactivar"
-                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
-                              <UserMinus size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      {['Nombre','Email','Empresas asignadas','Alta','Estado','Acciones'].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {asesores.map(a => (
+                      <tr key={a.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-navy-800">{a.nombre || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500">{a.id}</td>
+                        <td className="px-4 py-3 text-center">{a.empresas?.length ?? 0}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{new Date(a.created_at).toLocaleDateString('es-AR')}</td>
+                        <td className="px-4 py-3">
+                          <span className={a.activo !== false ? 'badge-green' : 'badge-gray'}>
+                            {a.activo !== false ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => abrirEmpresas(a)} title="Ver empresas"
+                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors">
+                              <Eye size={14} />
+                            </button>
+                            <button onClick={() => { setSel(a); setForm({ password:'' }); setError(null); setOk(null); setModal('password') }} title="Cambiar contraseña"
+                              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors">
+                              <KeyRound size={14} />
+                            </button>
+                            {a.activo !== false && (
+                              <button onClick={() => handleDesactivar(a)} title="Desactivar"
+                                className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
+                                <UserMinus size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden flex flex-col divide-y divide-slate-100">
+                {asesores.map(a => (
+                  <div key={a.id} className="p-4 flex flex-col gap-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <p className="font-semibold text-navy-800">{a.nombre || '—'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5 break-all">{a.id}</p>
+                      </div>
+                      <span className={`flex-shrink-0 ${a.activo !== false ? 'badge-green' : 'badge-gray'}`}>
+                        {a.activo !== false ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs mt-1">
+                      <div>
+                        <span className="text-slate-400 block mb-0.5 uppercase tracking-wide text-[10px]">Empresas</span>
+                        <span className="font-medium text-navy-800">{a.empresas?.length ?? 0} asignadas</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-400 block mb-0.5 uppercase tracking-wide text-[10px]">Alta</span>
+                        <span className="text-slate-600">{new Date(a.created_at).toLocaleDateString('es-AR')}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1 pt-3 border-t border-slate-100">
+                      <button onClick={() => abrirEmpresas(a)} className="flex-1 py-2 flex justify-center text-slate-500 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200">
+                        <Eye size={14} />
+                      </button>
+                      <button onClick={() => { setSel(a); setForm({ password:'' }); setError(null); setOk(null); setModal('password') }} className="flex-1 py-2 flex justify-center text-amber-600 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200">
+                        <KeyRound size={14} />
+                      </button>
+                      {a.activo !== false && (
+                        <button onClick={() => handleDesactivar(a)} className="flex-1 py-2 flex justify-center text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200">
+                          <UserMinus size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
