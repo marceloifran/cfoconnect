@@ -27,6 +27,7 @@ const ASESOR_NAV = [
   { to: '/informe-final',        label: 'Mapa de capital',     icon: Compass,         section: 'diagnostico' },
   { to: '/informe-nexxo',        label: 'Informe diagnóstico', icon: FileText,        section: 'diagnostico' },
   { to: '/cfo',                  label: 'CFO — Gestión',       icon: BarChart3,       section: 'gestion'    },
+  { to: '/conciliacion',         label: 'Conciliación',        icon: FileSearch,      section: 'gestion'    },
   { to: '/documentos',           label: 'Documentos',          icon: FolderOpen,      section: 'gestion'    },
   { to: '/mensajes',             label: 'Mensajes',            icon: MessageCircle,   section: 'gestion', badge: true },
 ]
@@ -36,6 +37,7 @@ const CLIENTE_NAV = [
   { to: '/mi-perfil',  label: 'Mi perfil financiero', icon: ClipboardList   },
   { to: '/mi-informe', label: 'Mi informe',           icon: FileText        },
   { to: '/mi-ruta',    label: 'Mi ruta al mercado',   icon: TrendingUp      },
+  { to: '/conciliacion',label: 'Conciliación bancaria', icon: FileSearch    },
   { to: '/documentos', label: 'Mis documentos',       icon: FolderOpen      },
   { to: '/mensajes',   label: 'Mensajes',             icon: MessageCircle, badge: true },
 ]
@@ -288,7 +290,7 @@ function Topbar({ empresa, etapa, showCompanySelector, asesorId, empresaActiva, 
   const etLabel = ETAPA_LABELS[etapa] || 'Onboarding'
 
   return (
-    <div className="flex items-center justify-between px-4 md:px-6 flex-shrink-0 bg-white overflow-x-auto no-scrollbar"
+    <div className="flex items-center justify-between px-4 md:px-6 flex-shrink-0 bg-white overflow-visible"
       style={{ height: 52, borderBottom: '1px solid var(--nx-line)' }}>
 
       {/* Izquierda: breadcrumb + separator + company selector */}

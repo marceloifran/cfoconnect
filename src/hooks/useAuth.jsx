@@ -92,8 +92,16 @@ export function AuthProvider({ children }) {
 
   function setEmpresaActiva(emp) {
     _setEmpresaActiva(emp)
-    if (emp) localStorage.setItem(LS_EMPRESA, JSON.stringify(emp))
-    else localStorage.removeItem(LS_EMPRESA)
+    if (emp) {
+      localStorage.setItem(LS_EMPRESA, JSON.stringify(emp))
+      localStorage.setItem('impersonating_empresa_id', emp.id)
+      supabase.from('empresas').select('*').eq('id', emp.id).single()
+        .then(({ data }) => setImpersonated(data || null))
+    } else {
+      localStorage.removeItem(LS_EMPRESA)
+      localStorage.removeItem('impersonating_empresa_id')
+      setImpersonated(null)
+    }
   }
 
   const isImpersonating = ['asesor', 'admin'].includes(profile?.rol) && !!impersonatedEmpresa
@@ -105,7 +113,7 @@ export function AuthProvider({ children }) {
     isAdmin:   profile?.rol === 'admin',
     isAsesor:  profile?.rol === 'asesor',
     isCliente: profile?.rol === 'cliente',
-    empresa: isImpersonating ? impersonatedEmpresa : profile?.empresas,
+    empresa: isImpersonating ? impersonatedEmpresa : (['asesor', 'admin', 'contador'].includes(profile?.rol) ? empresaActiva : profile?.empresas),
     isImpersonating,
     impersonatedEmpresa,
     stopImpersonating,

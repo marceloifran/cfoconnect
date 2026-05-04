@@ -299,7 +299,7 @@ export default function AdminPage() {
       supabase.from('documentos').select('id', { count: 'exact', head: true }),
       supabase.from('mensajes').select('id', { count: 'exact', head: true }).eq('leido', false),
       supabase.from('empresas').select('id, nombre, etapa_numero, scoring_sgr(score_total)').eq('activa', true).order('nombre'),
-      supabase.from('usuarios').select('id, nombre, email, activo, created_at, asignaciones(empresa_id)').eq('rol', 'asesor').order('nombre'),
+      supabase.from('usuarios').select('id, nombre, activo, created_at, asignaciones(empresa_id)').eq('rol', 'asesor').order('nombre'),
       supabase.from('alertas').select('*, empresas(nombre)').eq('leida', false).order('created_at', { ascending: false }).limit(10),
       supabase.from('documentos').select('id, titulo, created_at, empresas(nombre)').order('created_at', { ascending: false }).limit(5),
       supabase.from('mensajes').select('id, remitente_rol, created_at, empresas(nombre)').order('created_at', { ascending: false }).limit(5),

@@ -496,6 +496,36 @@ function AccionesRequeridas({ empresas, onActivar, onVerInfo }) {
   )
 }
 
+// ── Acciones Conciliación ──────────────────────────────────────────
+function AccionesConciliacion({ extractos, onActivar }) {
+  if (!extractos || !extractos.length) return null
+  return (
+    <div className="space-y-2 mb-5">
+      {extractos.map(ext => (
+        <div key={ext.id}
+          className="bg-indigo-50 border-l-4 border-l-indigo-600 p-4 flex items-center justify-between gap-4 shadow-sm">
+          <div>
+            <p className="text-sm font-bold text-indigo-900">
+              {ext.empresas?.nombre} — Conciliación pendiente
+            </p>
+            <p className="text-xs text-indigo-700 mt-0.5">
+              Extracto a {ext.periodo_hasta} requiere validación o atención.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => onActivar(ext.id)}
+              className="text-[10px] font-bold uppercase tracking-wider bg-indigo-600 text-white
+                         px-3 py-1.5 hover:bg-indigo-700 transition-colors rounded">
+              Validar extracto →
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Menú de control de estado ────────────────────────────────────────
 function MenuEstado({ empresa, onActualizar }) {
   const [abierto, setAbierto] = useState(false)
@@ -556,6 +586,7 @@ export default function AsesorPage() {
 
   const [empresas,       setEmpresas]       = useState([])
   const [alertas,        setAlertas]        = useState([])
+  const [extractosPendientes, setExtractosPendientes] = useState([])
   const [mensajesSin,    setMensajesSin]    = useState(0)
   const [loading,        setLoading]        = useState(true)
   const [modalNueva,     setModalNueva]     = useState(false)
@@ -601,7 +632,7 @@ export default function AsesorPage() {
         adminDb.storage.from('balances-cliente').list(String(emp.id), { limit: 1 })
       )
 
-      const [altRes, msgRes, periRes, dpRes, ...storageResults] = await Promise.all([
+      const [altRes, msgRes, periRes, dpRes, extRes, ...storageResults] = await Promise.all([
         adminDb.from('alertas')
           .select('*, empresas(nombre)')
           .in('empresa_id', empresaIds)
@@ -619,6 +650,10 @@ export default function AsesorPage() {
         adminDb.from('diagnostico_profundo')
           .select('empresa_id, dimension5')
           .in('empresa_id', empresaIds),
+        adminDb.from('conciliacion_extractos')
+          .select('id, empresa_id, estado, periodo_hasta, empresas(nombre)')
+          .in('empresa_id', empresaIds)
+          .in('estado', ['validacion_pendiente', 'error']),
         ...storageQueries,
       ])
 
@@ -647,6 +682,7 @@ export default function AsesorPage() {
       console.log('[AsesorPage] empresasEnriquecidas final:', empresasEnriquecidas.length)
       setEmpresas(empresasEnriquecidas)
       setAlertas(altRes.data || [])
+      setExtractosPendientes(extRes?.data || [])
       setMensajesSin(msgRes.count || 0)
     } catch (err) {
       console.error('[AsesorPage] cargar() ERROR:', err)
@@ -820,6 +856,12 @@ export default function AsesorPage() {
               ))}
             </div>
           )}
+
+          {/* ── Acciones Conciliación ──────────────────────────────── */}
+          <AccionesConciliacion 
+            extractos={extractosPendientes} 
+            onActivar={id => navigate(`/conciliacion/${id}`)}
+          />
 
           {/* ── Acciones requeridas ──────────────────────────────── */}
           <AccionesRequeridas

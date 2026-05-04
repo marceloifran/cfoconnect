@@ -692,6 +692,42 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* ── Calendario Fiscal (Agente Tributario T1) ── */}
+        <div className="mb-5">
+          <NxSection titulo="Calendario Fiscal">
+            <div className="space-y-0 divide-y divide-slate-100">
+              {[
+                { fecha: '12 de Mayo', titulo: 'IVA', monto: '$ 850.400', alerta: true },
+                { fecha: '15 de Mayo', titulo: 'Cargas Sociales', monto: '$ 1.250.000', alerta: false },
+                { fecha: '20 de Mayo', titulo: 'Ingresos Brutos', monto: '$ 450.000', alerta: false },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded flex flex-col items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] uppercase font-bold text-slate-500">{item.fecha.split(' ')[2]}</span>
+                      <span className="text-sm font-bold text-navy-900">{item.fecha.split(' ')[0]}</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-navy-900 flex items-center gap-2">
+                        {item.titulo}
+                        {item.alerta && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Vence pronto</span>}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">Vencimiento ARCA / AFIP</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono font-bold text-slate-700">{item.monto}</p>
+                    <button onClick={() => navigate('/agente-tributario')} className="text-[10px] text-indigo-600 font-bold hover:underline">Ver detalles</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-100 text-center">
+               <button onClick={() => navigate('/agente-tributario')} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">Ir al Agente Tributario →</button>
+            </div>
+          </NxSection>
+        </div>
+
         {/* ── PASO 8: Ruta al mercado ── */}
         <div className="mb-5">
           <RutaMercado score={score} etapaActual={estadoDiag?.etapa_numero || 1} />

@@ -20,6 +20,10 @@ import DocumentosPage from '@/pages/DocumentosPage'
 import MensajesPage from '@/pages/MensajesPage'
 import MiInformePage from '@/pages/MiInformePage'
 import MiRutaPage from '@/pages/MiRutaPage'
+import ConciliacionPage from '@/pages/ConciliacionPage'
+import ConciliacionValidacionPage from '@/pages/ConciliacionValidacionPage'
+import ContadorPage from '@/pages/ContadorPage'
+import AgenteTributarioPage from '@/pages/AgenteTributarioPage'
 
 // ── Placeholder ───────────────────────────────────────────────────────────────
 function ComingSoon({ title }) {
@@ -63,6 +67,7 @@ function RoleRouter() {
   if (!session) return <Navigate to="/login" replace />
   if (profile?.rol === 'admin')  return <Navigate to="/admin"   replace />
   if (profile?.rol === 'asesor') return <Navigate to="/asesor"  replace />
+  if (profile?.rol === 'contador') return <Navigate to="/contador" replace />
   return <Navigate to="/dashboard" replace />
 }
 
@@ -102,6 +107,9 @@ export default function AppRouter() {
           <Route path="mi-ruta"        element={<MiRutaPage />} />
           <Route path="documentos"     element={<DocumentosPage />} />
           <Route path="mensajes"       element={<MensajesPage />} />
+          <Route path="conciliacion"   element={<ConciliacionPage />} />
+          <Route path="conciliacion/:extractoId" element={<ConciliacionValidacionPage />} />
+          <Route path="agente-tributario" element={<AgenteTributarioPage />} />
           {/* Redirigir rutas viejas del cliente */}
           <Route path="diagnostico"              element={<Navigate to="/mi-perfil" replace />} />
           <Route path="diagnostico/resultados"   element={<Navigate to="/mi-perfil" replace />} />
@@ -118,6 +126,9 @@ export default function AppRouter() {
           <Route path="diagnostico-profundo" element={<RequireRole role="asesor"><DiagnosticoProfundoPage /></RequireRole>} />
           <Route path="informe-final"   element={<RequireRole role="asesor"><InformeFinalPage /></RequireRole>} />
           <Route path="informe-nexxo"   element={<RequireRole role="asesor"><InformeNexxoPage /></RequireRole>} />
+
+          {/* ── Contador ──────────────────────────────────────── */}
+          <Route path="contador"        element={<RequireRole role="contador"><ContadorPage /></RequireRole>} />
 
         </Route>
 

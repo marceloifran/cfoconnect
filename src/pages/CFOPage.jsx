@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { ars, pct } from '@/lib/financials'
 import PageHeader from '@/components/shared/PageHeader'
 import { Save, Sparkles, Download, AlertTriangle, CheckCircle, Info } from 'lucide-react'
+import EERRComparativo from '@/components/conciliacion/EERRComparativo'
 
 // ── Constantes ──────────────────────────────────────────────────────────────
 const AÑO = new Date().getFullYear()
@@ -16,6 +17,7 @@ const TABS_CFO = [
   { id: 'presupuesto', label: 'Presupuesto anual'      },
   { id: 'cashflow',    label: 'Cash flow 13 semanas'   },
   { id: 'reporte',     label: 'Reporte mensual'        },
+  { id: 'eerr_comparativo', label: 'EERR comparativo' },
 ]
 
 const FILAS = [
@@ -839,6 +841,41 @@ ${datosCashflow}`
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// HERRAMIENTA 4 — EERR COMPARATIVO
+// ════════════════════════════════════════════════════════════════════════════
+
+function EERRComparativoTab({ empresaId }) {
+  const [gestion, setGestion] = useState(null)
+  const [contable, setContable] = useState(null)
+  
+  useEffect(() => {
+    // Mock inicial para la vista (se reemplazará con fetch a Supabase de eerr_contable_uploads y periodos_financieros)
+    setGestion({
+      ingresos_operativos: 15000000,
+      costos_directos: 8000000,
+      gastos_operativos: 2500000,
+      resultado_financiero: -500000,
+      cargas_tributarias: 1200000,
+      cargas_bancarias: 150000
+    })
+    setContable({
+      ingresos_operativos: 14500000,
+      costos_directos: 8000000,
+      gastos_operativos: 2500000,
+      resultado_financiero: -500000,
+      cargas_tributarias: 1300000,
+      cargas_bancarias: 150000
+    })
+  }, [empresaId])
+
+  return (
+    <div className="max-w-4xl mx-auto py-4">
+      <EERRComparativo gestion={gestion} contable={contable} />
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -902,6 +939,9 @@ export default function CFOPage() {
             )}
             {tab === 'reporte' && (
               <ReporteTab isAsesor={isAsesor} empresa={empresa} empresas={empresas} empresaId={empresaId} empresaNombre={empresaNombre} />
+            )}
+            {tab === 'eerr_comparativo' && (
+              <EERRComparativoTab empresaId={empresaId} />
             )}
           </div>
         </div>
