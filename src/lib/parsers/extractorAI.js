@@ -2,8 +2,10 @@ import * as pdfjsLib from 'pdfjs-dist'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+
 // Configurar el worker de PDF.js (vital para que funcione en el navegador)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 async function extractTextFromPDF(file) {
   const arrayBuffer = await file.arrayBuffer()
