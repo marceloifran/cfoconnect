@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
-import { FileSearch, Upload, ArrowRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
+import { FileSearch, Upload, ArrowRight, AlertCircle, CheckCircle2, Clock, RefreshCw } from 'lucide-react'
 import ModalCargaExtractos from '@/components/conciliacion/ModalCargaExtractos'
+import { reanalizarExtracto } from '@/lib/parsers/extractorAI'
 
 export default function ConciliacionPage() {
   const { profile, empresaActiva, isAsesor } = useAuth()
@@ -11,6 +12,7 @@ export default function ConciliacionPage() {
   const [extractos, setExtractos] = useState([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [reanalizandoId, setReanalizandoId] = useState(null)
 
   // Empresa context
   const empresaId = isAsesor ? empresaActiva?.id : profile?.empresa_id
@@ -47,6 +49,13 @@ export default function ConciliacionPage() {
       .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false })
     if (data) setExtractos(data)
+  }
+
+  const handleReanalizar = async (ext) => {
+    setReanalizandoId(ext.id)
+    await reanalizarExtracto(ext, supabase)
+    setReanalizandoId(null)
+    refreshExtractos()
   }
 
   const estadoBadge = (estado) => {
@@ -137,7 +146,17 @@ export default function ConciliacionPage() {
                       <div className="text-xs text-slate-500">Ini: <span className="font-mono text-slate-700">${ext.saldo_inicial?.toLocaleString()}</span></div>
                       <div className="text-xs text-slate-500 mt-0.5">Fin: <span className="font-mono text-slate-700">${ext.saldo_final?.toLocaleString()}</span></div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                      {(ext.estado === 'error' || ext.estado === 'ingesta_pendiente') && (
+                        <button
+                          onClick={() => handleReanalizar(ext)}
+                          disabled={reanalizandoId === ext.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw size={14} className={reanalizandoId === ext.id ? "animate-spin" : ""} />
+                          {reanalizandoId === ext.id ? 'Analizando...' : 'Reintentar IA'}
+                        </button>
+                      )}
                       <button
                         onClick={() => navigate(`/conciliacion/${ext.id}`)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors"

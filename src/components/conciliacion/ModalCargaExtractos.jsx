@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Upload, X, File, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { processExtractoWithAI } from '@/lib/parsers/extractorAI'
 
 export default function ModalCargaExtractos({ isOpen, onClose, empresaId, onUploadComplete }) {
   const [archivos, setArchivos] = useState([])
@@ -71,7 +72,7 @@ export default function ModalCargaExtractos({ isOpen, onClose, empresaId, onUplo
         if (uploadError) throw uploadError
 
         // Registrar en BD
-        const { error: dbError } = await supabase.from('conciliacion_extractos').insert({
+        const { data: dbData, error: dbError } = await supabase.from('conciliacion_extractos').insert({
           empresa_id: empresaId,
           banco: a.banco,
           cuenta_numero: a.cuenta,
@@ -82,9 +83,16 @@ export default function ModalCargaExtractos({ isOpen, onClose, empresaId, onUplo
           estado: 'ingesta_pendiente',
           saldo_inicial: 0,
           saldo_final: 0
-        })
+        }).select().single()
 
         if (dbError) throw dbError
+
+        // LLAMAR A LA IA PARA EXTRAER MOVIMIENTOS EN SEGUNDO PLANO
+        // No hacemos un await estricto para no frenar toda la UI,
+        // pero como la experiencia del usuario espera verlos rápido, lo hacemos asincrónico.
+        processExtractoWithAI(a.file, dbData.id, a.banco, supabase)
+          .then(() => onUploadComplete()) // Refrescar cuando termine el procesamiento
+          .catch(console.error)
 
         a.estado = 'success'
       } catch (err) {
