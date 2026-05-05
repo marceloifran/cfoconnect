@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { FileSearch, Upload, ArrowRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
+import ModalCargaExtractos from '@/components/conciliacion/ModalCargaExtractos'
 
 export default function ConciliacionPage() {
   const { profile, empresaActiva, isAsesor } = useAuth()
@@ -37,6 +38,16 @@ export default function ConciliacionPage() {
 
     fetchExtractos()
   }, [empresaId])
+
+  const refreshExtractos = async () => {
+    if (!empresaId) return
+    const { data } = await supabase
+      .from('conciliacion_extractos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('created_at', { ascending: false })
+    if (data) setExtractos(data)
+  }
 
   const estadoBadge = (estado) => {
     const badges = {
@@ -142,27 +153,13 @@ export default function ConciliacionPage() {
         )}
       </div>
 
-      {/* Modal de Carga (Placeholder simplificado) */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-navy-900">Subir Extracto Bancario</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <div className="p-6">
-              <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 flex flex-col items-center justify-center bg-slate-50">
-                <Upload size={32} className="text-slate-400 mb-3" />
-                <p className="text-sm font-medium text-navy-800">Arrastrá tu PDF o Excel aquí</p>
-                <p className="text-xs text-slate-500 mt-1">Banco Galicia, Santander o Macro</p>
-                <button className="mt-4 px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-navy-700 hover:bg-slate-50">
-                  Seleccionar archivo
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Multi-archivo Real */}
+      <ModalCargaExtractos 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        empresaId={empresaId}
+        onUploadComplete={refreshExtractos}
+      />
     </div>
   )
 }
