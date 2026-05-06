@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { cerrarExtracto } from '@/lib/conciliacion'
 import { ars } from '@/lib/financials'
 import { obtenerFamilia, calcularTotalesFamilia } from '@/lib/categoriasConciliacion'
+import ExtractoHeader from '@/components/conciliacion/ExtractoHeader'
+import MovimientoRow from '@/components/conciliacion/MovimientoRow'
+import DesgloseTabla from '@/components/conciliacion/DesgloseTabla'
+import AnalisisAutomatico from '@/components/conciliacion/AnalisisAutomatico'
 
 export default function ConciliacionValidacionPage() {
   const { extractoId } = useParams()
@@ -18,6 +22,8 @@ export default function ConciliacionValidacionPage() {
   const [subTab, setSubTab] = useState('pendientes')
   const [cerrando, setCerrando] = useState(false)
 
+  const [siblings, setSiblings] = useState({ prev: null, next: null })
+
   useEffect(() => {
     async function loadData() {
       setLoading(true)
@@ -26,7 +32,30 @@ export default function ConciliacionValidacionPage() {
         supabase.from('conciliacion_movimientos').select('*').eq('extracto_id', extractoId).order('fecha', { ascending: false })
       ])
       
-      if (extRes.data) setExtracto(extRes.data)
+      if (extRes.data) {
+        setExtracto(extRes.data)
+        
+        // Cargar extractos hermanos para navegación (misma empresa, banco y cuenta)
+        let query = supabase
+          .from('conciliacion_extractos')
+          .select('id, periodo_desde')
+          .eq('empresa_id', extRes.data.empresa_id)
+          .eq('banco', extRes.data.banco)
+        
+        if (extRes.data.cuenta_numero) {
+          query = query.eq('cuenta_numero', extRes.data.cuenta_numero)
+        }
+
+        const { data: allExts } = await query.order('periodo_desde', { ascending: true })
+        
+        if (allExts) {
+          const currentIndex = allExts.findIndex(e => e.id === extractoId)
+          setSiblings({
+            prev: allExts[currentIndex - 1] || null,
+            next: allExts[currentIndex + 1] || null
+          })
+        }
+      }
       if (movRes.data) setMovimientos(movRes.data)
       setLoading(false)
     }
@@ -96,7 +125,9 @@ export default function ConciliacionValidacionPage() {
           <div className="p-6 flex flex-col gap-8">
             {/* Titulo mes */}
             <div>
-              <h2 className="text-xl font-bold text-[#111417] font-serif">Mayo 2025</h2>
+              <h2 className="text-xl font-bold text-[#111417] font-serif capitalize">
+                {new Date(extracto.periodo_desde).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
+              </h2>
               <p className="text-xs text-slate-500 capitalize">{extracto.banco} · {extracto.cuenta_numero || 'CC Pesos'}</p>
             </div>
 
@@ -136,11 +167,29 @@ export default function ConciliacionValidacionPage() {
               </div>
             </div>
 
-            {/* Selector de mes (mock) */}
+            {/* Selector de mes */}
             <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-              <button className="text-slate-400 hover:text-slate-600">◀ Abr 2025</button>
-              <span className="font-bold bg-slate-100 px-2 py-1 rounded">May 2025</span>
-              <button className="text-slate-400 hover:text-slate-600">Jun 2025 ▶</button>
+              {siblings.prev ? (
+                <button 
+                  onClick={() => navigate(`/conciliacion/${siblings.prev.id}`)}
+                  className="text-slate-500 hover:text-indigo-600 font-medium flex items-center gap-1"
+                >
+                  ◀ {new Date(siblings.prev.periodo_desde).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}
+                </button>
+              ) : <div className="w-10"/>}
+
+              <span className="font-bold bg-slate-100 px-2 py-1 rounded text-navy-900">
+                {new Date(extracto.periodo_desde).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}
+              </span>
+
+              {siblings.next ? (
+                <button 
+                  onClick={() => navigate(`/conciliacion/${siblings.next.id}`)}
+                  className="text-slate-500 hover:text-indigo-600 font-medium flex items-center gap-1"
+                >
+                  {new Date(siblings.next.periodo_desde).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })} ▶
+                </button>
+              ) : <div className="w-10"/>}
             </div>
           </div>
         </div>

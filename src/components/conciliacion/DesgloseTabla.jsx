@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { FAMILIAS_CATEGORIAS } from '@/lib/categoriasConciliacion'
 import { ars } from '@/lib/financials'
 import { ChevronRight, ChevronDown } from 'lucide-react'
