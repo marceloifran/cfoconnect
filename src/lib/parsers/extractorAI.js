@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
+import { clasificarExtracto } from '../conciliacion/motorMatching'
 
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -146,13 +147,28 @@ ${textTruncated}
         fecha: mov.fecha,
         descripcion_raw: mov.descripcion,
         debito: tipo === 'debito' ? montoAbs : 0,
-        credito: tipo === 'credito' ? montoAbs : 0
+        credito: tipo === 'credito' ? montoAbs : 0,
+        estado: 'pendiente'
       })
     }
 
+    // === NEXXO Motor de Conciliación ===
+    // Dispara la clasificación automática en background (fire-and-forget).
+    // El extracto ya tiene los movimientos cargados; el motor los pasará
+    // de 'pendiente' a 'auto' / 'sugerido' según las reglas.
+    // Se hace sin await para no bloquear la respuesta de processExtractoWithAI.
+    clasificarExtracto(extractoId, { usarLLM: true })
+      .then(stats => {
+        console.log(`[NEXXO Motor] Extracto ${extractoId} clasificado:`, stats)
+      })
+      .catch(err => {
+        console.error(`[NEXXO Motor] Error clasificando extracto ${extractoId}:`, err)
+      })
+    // === fin NEXXO Motor ===
+
     // Actualizar el estado del extracto a validacion_pendiente
     await supabaseClient.from('conciliacion_extractos')
-      .update({ 
+      .update({
         estado: 'validacion_pendiente',
         total_creditos: creditos,
         total_debitos: debitos

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { cerrarExtracto } from '@/lib/conciliacion'
 import { ars } from '@/lib/financials'
 import { obtenerFamilia, calcularTotalesFamilia } from '@/lib/categoriasConciliacion'
+import { clasificarExtracto } from '@/lib/conciliacion/motorMatching'
 import ExtractoHeader from '@/components/conciliacion/ExtractoHeader'
 import MovimientoRow from '@/components/conciliacion/MovimientoRow'
 import DesgloseTabla from '@/components/conciliacion/DesgloseTabla'
@@ -21,6 +22,7 @@ export default function ConciliacionValidacionPage() {
   const [activeTab, setActiveTab] = useState('movimientos')
   const [subTab, setSubTab] = useState('pendientes')
   const [cerrando, setCerrando] = useState(false)
+  const [reclasificando, setReclasificando] = useState(false)
 
   const [siblings, setSiblings] = useState({ prev: null, next: null })
 
@@ -63,15 +65,60 @@ export default function ConciliacionValidacionPage() {
   }, [extractoId])
 
   const handleConfirmar = async (id) => {
-    setMovimientos(prev => prev.map(m => m.id === id ? { ...m, validado: true, validado_por: profile.id, confianza: 'manual' } : m))
+    setMovimientos(prev => prev.map(m => m.id === id
+      ? { ...m, validado: true, validado_por: profile.id, confianza: 'manual', estado: 'validado' }
+      : m
+    ))
     await supabase.from('conciliacion_movimientos')
-      .update({ validado: true, validado_por: profile.id, validado_at: new Date().toISOString(), confianza: 'manual' })
+      .update({
+        validado: true,
+        validado_por: profile.id,
+        validado_at: new Date().toISOString(),
+        confianza: 'manual',
+        estado: 'validado'
+      })
       .eq('id', id)
   }
 
   const handleCambiarCuenta = async (id, nuevaCuenta) => {
-    setMovimientos(prev => prev.map(m => m.id === id ? { ...m, cuenta_nombre: nuevaCuenta } : m))
-    await supabase.from('conciliacion_movimientos').update({ cuenta_nombre: nuevaCuenta }).eq('id', id)
+    const mov = movimientos.find(m => m.id === id)
+    // Si era 'auto' y el usuario lo corrige manualmente, pasa a 'sugerido'
+    const nuevoEstado = mov?.estado === 'auto' ? 'sugerido' : mov?.estado
+    setMovimientos(prev => prev.map(m =>
+      m.id === id ? { ...m, cuenta_nombre: nuevaCuenta, estado: nuevoEstado } : m
+    ))
+    const update = { cuenta_nombre: nuevaCuenta }
+    if (nuevoEstado) update.estado = nuevoEstado
+    await supabase.from('conciliacion_movimientos').update(update).eq('id', id)
+  }
+
+  const handleConfirmarTodosAuto = async () => {
+    if (autoClasificados.length === 0) return
+    setMovimientos(prev => prev.map(m =>
+      m.estado === 'auto' ? { ...m, validado: true, estado: 'validado', confianza: 'manual' } : m
+    ))
+    await supabase.from('conciliacion_movimientos')
+      .update({ validado: true, estado: 'validado', validado_por: profile.id, validado_at: new Date().toISOString() })
+      .eq('extracto_id', extractoId)
+      .eq('estado', 'auto')
+  }
+
+  const handleReclasificar = async () => {
+    setReclasificando(true)
+    try {
+      const stats = await clasificarExtracto(extractoId, { usarLLM: true })
+      const [extRes, movRes] = await Promise.all([
+        supabase.from('conciliacion_extractos').select('*').eq('id', extractoId).single(),
+        supabase.from('conciliacion_movimientos').select('*').eq('extracto_id', extractoId).order('fecha', { ascending: false })
+      ])
+      if (extRes.data) setExtracto(extRes.data)
+      if (movRes.data) setMovimientos(movRes.data)
+      alert(`Re-clasificación completa: ${stats.auto} auto, ${stats.sug} sugeridos, ${stats.pend} pendientes`)
+    } catch (err) {
+      alert('Error al re-clasificar: ' + err.message)
+    } finally {
+      setReclasificando(false)
+    }
   }
 
   const handleAgregarNota = async (id, notas) => {
@@ -94,10 +141,12 @@ export default function ConciliacionValidacionPage() {
   if (loading) return <div className="p-8 text-slate-500 text-sm font-sans">Cargando extracto...</div>
   if (!extracto) return <div className="p-8 text-slate-500 text-sm font-sans">Extracto no encontrado</div>
 
-  const pendientes = movimientos.filter(m => !m.validado && m.confianza !== 'alta')
-  const autoClasificados = movimientos.filter(m => !m.validado && m.confianza === 'alta')
-  const validados = movimientos.filter(m => m.validado)
-  const atipicos = movimientos.filter(m => m.es_atipico)
+  const autoClasificados = movimientos.filter(m => !m.validado && m.estado === 'auto')
+  const sugeridos        = movimientos.filter(m => !m.validado && m.estado === 'sugerido')
+  const sinClasificar    = movimientos.filter(m => !m.validado && (m.estado === 'pendiente' || (!m.estado && !m.validado)))
+  const validados        = movimientos.filter(m => m.validado || m.estado === 'validado')
+  const atipicos         = movimientos.filter(m => m.es_atipico)
+  const pendientes       = [...sugeridos, ...sinClasificar] // alias para compatibilidad
 
   const totalesFamilia = calcularTotalesFamilia(movimientos)
 
@@ -112,11 +161,13 @@ export default function ConciliacionValidacionPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F5F4F1] font-sans">
-      <ExtractoHeader 
-        extracto={extracto} 
-        movimientos={movimientos} 
-        onCerrar={handleCerrar} 
-        isCerrando={cerrando} 
+      <ExtractoHeader
+        extracto={extracto}
+        movimientos={movimientos}
+        onCerrar={handleCerrar}
+        isCerrando={cerrando}
+        onReclasificar={handleReclasificar}
+        isReclasificando={reclasificando}
       />
 
       <div className="flex-1 flex min-h-0">
@@ -213,25 +264,69 @@ export default function ConciliacionValidacionPage() {
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'movimientos' && (
               <div className="flex-1 flex flex-col m-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="bg-slate-50 border-b border-slate-200 px-4 flex gap-6">
+                <div className="bg-slate-50 border-b border-slate-200 px-4 flex gap-1 overflow-x-auto">
                   {[
-                    { id: 'pendientes', label: `Pendientes (${pendientes.length})` },
-                    { id: 'auto', label: `Auto-clasificados (${autoClasificados.length})` },
-                    { id: 'validados', label: `Validados (${validados.length})` },
-                    { id: 'atipicos', label: `Atípicos (${atipicos.length})` }
-                  ].map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => setSubTab(t.id)}
-                      className={`py-3 text-xs font-bold tracking-wide uppercase border-b-2 transition-colors ${subTab === t.id ? 'border-navy-900 text-navy-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                    { id: 'auto',    label: 'Aceptar',  count: autoClasificados.length, color: 'emerald' },
+                    { id: 'sugerido',label: 'Revisar',  count: sugeridos.length,        color: 'amber'   },
+                    { id: 'asignar', label: 'Asignar',  count: sinClasificar.length,    color: 'slate'   },
+                    { id: 'validados',label:'Validados', count: validados.length,        color: 'slate'   },
+                  ].map(t => {
+                    const active = subTab === t.id
+                    const dotColor = { emerald:'bg-emerald-400', amber:'bg-amber-400', slate:'bg-slate-300' }[t.color]
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setSubTab(t.id)}
+                        className={`flex items-center gap-2 py-3 px-3 text-xs font-bold tracking-wide uppercase border-b-2 transition-colors whitespace-nowrap
+                          ${active ? 'border-navy-900 text-navy-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                        {t.label}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono
+                          ${active ? 'bg-navy-900 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                          {t.count}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  {(subTab === 'pendientes' ? pendientes : subTab === 'auto' ? autoClasificados : subTab === 'validados' ? validados : atipicos).map(mov => (
-                    <MovimientoRow 
+                  {/* Banner Aceptar todos */}
+                  {subTab === 'auto' && autoClasificados.length > 0 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 border-b border-emerald-100">
+                      <span className="text-xs text-emerald-700 font-semibold">
+                        {autoClasificados.length} movimientos con alta confianza — podés aprobarlos todos de una vez
+                      </span>
+                      <button onClick={handleConfirmarTodosAuto}
+                        className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">
+                        ✓ Aceptar todos
+                      </button>
+                    </div>
+                  )}
+                  {/* Banner Revisar */}
+                  {subTab === 'sugerido' && sugeridos.length > 0 && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-100">
+                      <span className="text-xs text-amber-700 font-semibold">
+                        {sugeridos.length} movimientos con confianza media — revisá la categoría antes de confirmar
+                      </span>
+                    </div>
+                  )}
+                  {/* Banner Asignar */}
+                  {subTab === 'asignar' && sinClasificar.length > 0 && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
+                      <span className="text-xs text-slate-500 font-semibold">
+                        {sinClasificar.length} movimientos sin categoría — asigná manualmente para entrenar el sistema
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Lista de movimientos */}
+                  {(subTab === 'auto'     ? autoClasificados
+                  : subTab === 'sugerido' ? sugeridos
+                  : subTab === 'asignar'  ? sinClasificar
+                  : validados
+                  ).map(mov => (
+                    <MovimientoRow
                       key={mov.id}
                       movimiento={mov}
                       onConfirmar={handleConfirmar}
@@ -239,8 +334,11 @@ export default function ConciliacionValidacionPage() {
                       onAgregarNota={handleAgregarNota}
                     />
                   ))}
-                  {(subTab === 'pendientes' && pendientes.length === 0) && <div className="p-12 text-center text-slate-500 text-sm">No hay movimientos pendientes</div>}
-                  {(subTab === 'atipicos' && atipicos.length === 0) && <div className="p-12 text-center text-slate-500 text-sm">No hay movimientos atípicos detectados</div>}
+
+                  {subTab === 'auto'     && autoClasificados.length === 0 && <div className="p-12 text-center text-slate-400 text-sm">No hay movimientos auto-clasificados</div>}
+                  {subTab === 'sugerido' && sugeridos.length === 0        && <div className="p-12 text-center text-slate-400 text-sm">No hay movimientos para revisar</div>}
+                  {subTab === 'asignar'  && sinClasificar.length === 0    && <div className="p-12 text-center text-slate-400 text-sm">Todos los movimientos están clasificados</div>}
+                  {subTab === 'validados'&& validados.length === 0         && <div className="p-12 text-center text-slate-400 text-sm">Todavía no hay movimientos validados</div>}
                 </div>
               </div>
             )}

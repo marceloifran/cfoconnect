@@ -70,16 +70,23 @@ export function calcularTotalesFamilia(movimientos) {
   }
 
   movimientos.forEach(m => {
-    if (!m.validado || !m.cuenta_nombre) return
-    const familia = obtenerFamilia(m.cuenta_nombre)
-    // Ingresos suma créditos y resta débitos
-    // Pagos, etc, nosotros queremos el net... wait, the prompt says:
-    // ingresos: 831338426 (positivo)
-    // pagos: -363684485 (negativo)
-    // So it's just credito - debito for everything!
+    const clasificado = m.validado || m.estado === 'validado' || m.estado === 'auto' || m.estado === 'sugerido'
+    if (!clasificado) return
+
+    // Preferir cuenta_familia del motor (código normalizado), sino fallback legacy
+    let familia = null
+    if (m.cuenta_familia) {
+      familia = m.cuenta_familia.toLowerCase()
+    } else if (m.cuenta_nombre) {
+      familia = obtenerFamilia(m.cuenta_nombre)
+    }
+    if (!familia) return
+
     const neto = (m.credito || 0) - (m.debito || 0)
     if (totales[familia] !== undefined) {
       totales[familia] += neto
+    } else {
+      totales.sin_clasificar += neto
     }
   })
 
